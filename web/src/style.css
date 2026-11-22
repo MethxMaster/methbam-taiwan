@@ -309,3 +309,5 @@ h1 { font-size:44px; line-height:1.1; font-weight:600; letter-spacing:-.025em; m
 .lnk { color:var(--blue); font-size:13.5px; }
 .lnk:hover { text-decoration:underline; }
 .meta .lnk { vertical-align:baseline; }
+
+.hprice { font-weight:600; }

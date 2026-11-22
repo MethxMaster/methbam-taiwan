@@ -6,6 +6,7 @@ import { TODO } from './todo.js';
 import { DAY_INFO, COST_DAYS, LOCS, HOTELS, HOTEL_FOR_DAY } from './days.js';
 import { TRANSPORT, PACKS, WHEN, STATUS, LINKS } from './transport.js';
 import { FOODS, FZONES, FTYPES } from './foods.js';
+import { HOTEL_LIST, HZONES, HTYPES } from './hotels.js';
 
 /* ---------- helpers ---------- */
 const $ = (s, r = document) => r.querySelector(s);
@@ -60,7 +61,7 @@ const TRIP_END = new Date('2026-12-21T00:00:00+08:00');
 })();
 
 /* ---------- state / routing ---------- */
-const TABS = ['plan', 'map', 'places', 'food', 'transport', 'cost', 'todo'];
+const TABS = ['plan', 'map', 'places', 'food', 'hotels', 'transport', 'cost', 'todo'];
 let state = { tab: 'plan', day: 'all', anchor: null, focus: null };
 (() => {
   const now = new Date();
@@ -115,6 +116,8 @@ function openPlace(code) {
 $('#sheet').addEventListener('click', e => { if (e.target.closest('[data-close]')) $('#sheet').hidden = true; });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#sheet').hidden = true; });
 document.addEventListener('click', e => {
+  const ht = e.target.closest('[data-hotels]');
+  if (ht) { const v = ht.dataset.hotels, zm = { ali: 'อาลีซาน', sml: 'SML', tpe: 'ไทเป' }; Object.assign(HF, { q: '', z: zm[v] || 'all', s: v === 'plan' ? 'plan' : 'all', c: 'all', o: 'default' }); renderHotels(); go('hotels'); return; }
   const fd = e.target.closest('[data-foods]');
   if (fd) { const v = fd.dataset.foods; Object.assign(FF, { q: '', z: 'all', d: v === 'plan' ? 'all' : v, s: 'plan', c: 'all' }); renderFood(); go('food'); return; }
   const tr = e.target.closest('[data-tr]');
@@ -247,7 +250,7 @@ function renderOverview() {
   const catRows = Object.entries(cats).sort((a, b) => b[1] - a[1]), sub = Object.values(cats).reduce((a, b) => a + b, 0);
   const R = 26, CIRC = 2 * Math.PI * R;
   $('#tab-plan').innerHTML = `<div class="hero"><p class="eyebrow">16–20 ธ.ค. 2569 · 2 คน</p><h1>ไต้หวัน<br>5 วัน 4 คืน</h1><p class="sub">ไม่เช่ารถ ใช้ HSR บัส และ MRT</p>
-      <p class="cta"><button class="more" data-day="D1">ดูแผนรายวัน</button><button class="more" data-places="plan">ดูสถานที่ในแผน</button><button class="more" data-foods="plan">ดูร้านอาหาร</button><button class="more" data-goto="transport">ดูตั๋วและการเดินทาง</button><button class="more" data-goto="cost">ดูงบ</button></p></div>
+      <p class="cta"><button class="more" data-day="D1">ดูแผนรายวัน</button><button class="more" data-places="plan">ดูสถานที่ในแผน</button><button class="more" data-foods="plan">ดูร้านอาหาร</button><button class="more" data-hotels="plan">ดูที่พัก</button><button class="more" data-goto="transport">ดูตั๋วและการเดินทาง</button><button class="more" data-goto="cost">ดูงบ</button></p></div>
     ${subTabs('all')}
     <div class="bento">
       <div class="w"><div class="wl">นับถอยหลัง</div><div class="wn">${dl.n}<small>วัน</small></div><div class="wd">${dl.l}</div></div>
@@ -261,7 +264,7 @@ function renderOverview() {
         <div class="wrow"><span>16 ธ.ค.</span><b>อาลีซาน</b></div>
         <div class="wrow"><span>17 ธ.ค.</span><b>SML อีต้าเส้า</b></div>
         <div class="wrow"><span>18–19 ธ.ค.</span><b>ไทเป ซีเหมินติง</b></div>
-        <div class="wd">ยังไม่ได้จอง · ดูตัวเลือกและราคาในหน้ารายวัน</div></div>
+        <div class="wd">ยังไม่ได้จอง · ดูตัวเลือกและราคาในหน้ารายวัน</div><button class="more" data-hotels="plan" style="font-size:15px;margin-top:8px">ดูตัวเลือกที่พัก</button></div>
       <div class="w"><div class="wl">เตรียมตัว</div>
         <div class="hrow" style="margin-top:8px"><svg class="ring" viewBox="0 0 64 64"><circle cx="32" cy="32" r="${R}" fill="none" stroke="var(--line)" stroke-width="7"/><circle cx="32" cy="32" r="${R}" fill="none" stroke="var(--btn)" stroke-width="7" stroke-linecap="round" stroke-dasharray="${CIRC}" stroke-dashoffset="${CIRC * (1 - nd / all.length)}" transform="rotate(-90 32 32)"/></svg><div class="wn" style="margin:0;font-size:30px">${nd}/${all.length}</div></div>
         <div class="wd">ข้อที่ทำแล้ว</div></div>
@@ -289,7 +292,7 @@ function hotelBlock(hk, dayId) {
   return `<div class="small"><b style="color:var(--ink)">${esc(h.title)}</b>${(dayId === 'D4' || dayId === 'D5') ? ' · ที่พักเดียวกับคืนที่แล้ว' : ''}</div>
     <p class="plain" style="margin:6px 0 16px;font-size:15.5px">${esc(h.why)}</p>
     ${h.picks.map((p, k) => `<div class="item"><b>${k + 1}. ${esc(p.n)}</b><div class="small">${esc(p.d)}</div><div class="price">ราคา: ${esc(p.price)}</div><div class="small"><a href="${gmSearch(p.q)}" target="_blank" rel="noopener">ดูในแผนที่</a></div></div>`).join('')}
-    <p class="note">คัดจากเว็บจองห้องและรีวิว ไม่ใช่การจัดอันดับทางการ ราคาเป็นตัวอย่างคนละวัน ไม่ใช่ราคาวันที่ไป ต้องกรอกวันที่เช็คเอง · <a href="${gmSearch(l.q)}" target="_blank" rel="noopener">ดูย่านนี้ในแผนที่</a></p>`;
+    <p class="note">คัดจากเว็บจองห้องและรีวิว ไม่ใช่การจัดอันดับทางการ ราคาเป็นตัวอย่างคนละวัน ไม่ใช่ราคาวันที่ไป ต้องกรอกวันที่เช็คเอง · <a href="${gmSearch(l.q)}" target="_blank" rel="noopener">ดูย่านนี้ในแผนที่</a></p><button class="more" data-hotels="${hk}" style="font-size:16px;margin-top:10px">ดูตัวเลือกทั้งหมดในแท็บที่พัก</button>`;
 }
 function computeSteps(d) {
   const info = DAY_INFO[d.day];
@@ -467,6 +470,47 @@ function renderFood() {
   $$('#fcats button').forEach(b => b.onclick = () => { FF.c = b.dataset.c; renderFood(); });
 }
 
+/* ---------- hotels ---------- */
+const HF = { q: '', z: 'all', s: 'all', c: 'all', o: 'default' };
+const htName = k => (HTYPES.find(x => x[0] === k) || [k, k])[1];
+const hotelCard = h => `<div class="fd ${h.plan ? 'in' : ''}" ${h.plan ? `style="--dc:${dayColor(h.plan.day)}"` : ''}>
+  ${h.plan ? `<span class="pb2">ในแผน · ${esc(h.plan.night)}${h.plan.main ? ' · ตัวเลือกหลัก' : ''}</span>` : ''}
+  <div class="fn">${esc(h.n)}</div>
+  <div class="fz">${esc(h.z)}${h.rating ? ` · คะแนน ${h.rating}/10` : ''}</div>
+  <div class="fdish hprice">${esc(h.price)}</div>
+  ${h.tags.length ? `<div class="tg">${h.tags.map(k => `<span>${esc(htName(k))}</span>`).join('')}</div>` : ''}
+  <p class="fnote">${esc(h.d)}</p>
+  <div class="fmeta">${stTag(h.s)}<a href="${gmSearch(h.q)}" target="_blank" rel="noopener">แผนที่</a>${(h.src || []).map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(n)}</a>`).join('')}</div>
+</div>`;
+function renderHotels() {
+  const nPlan = HOTEL_LIST.filter(h => h.plan).length;
+  const zOk = (h) => HF.z === 'all' || h.z === HF.z || (HF.z === 'อาลีซาน' && h.z.startsWith('อาลีซาน'));
+  $('#tab-hotels').innerHTML = `<div class="hero" style="text-align:left;padding:40px 0 0"><p class="eyebrow">ที่พัก 4 คืน</p><h1>ที่พัก</h1><p class="sub">${HOTEL_LIST.length} ตัวเลือก · <span style="color:var(--ink)">ในแผนของเรา ${nPlan} ตัวเลือก</span></p></div>
+    <p class="note">คัดจากเว็บจองห้องและรีวิวที่ค้นเจอ ไม่ใช่การจัดอันดับทางการ <b>ราคาเป็นตัวอย่างคนละวันและคนละสกุลเงิน ไม่ใช่ราคาวันที่ 16–19 ธ.ค. และยังไม่ทราบห้องว่าง</b> ต้องกรอกวันที่เช็คเองก่อนจอง ${stTag('sec')} มีราคา/คะแนนตัวอย่าง ${stTag('no')} ไม่พบราคา</p>
+    <div class="filters" style="margin-top:18px"><input id="hq" placeholder="ค้นหาชื่อที่พัก" value="${esc(HF.q)}">
+      <select id="hz"><option value="all">ทุกโซน</option>${HZONES.map(z => `<option value="${z}" ${HF.z === z ? 'selected' : ''}>${z}</option>`).join('')}</select>
+      <select id="ho"><option value="default" ${HF.o === 'default' ? 'selected' : ''}>เรียงตามแผน</option><option value="price" ${HF.o === 'price' ? 'selected' : ''}>ราคาต่ำ → สูง</option><option value="rating" ${HF.o === 'rating' ? 'selected' : ''}>คะแนนสูง → ต่ำ</option></select></div>
+    <div style="margin-top:14px"><div class="seg" id="hscope">${[['all', 'ทั้งหมด'], ['plan', `ในแผน (${nPlan})`], ['none', `ตัวเลือกเพิ่ม (${HOTEL_LIST.length - nPlan})`]].map(([v, tx]) => `<button class="${HF.s === v ? 'on' : ''}" data-s="${v}">${tx}</button>`).join('')}</div></div>
+    <div class="cats" id="hcats"><button class="fchip ${HF.c === 'all' ? 'on' : ''}" data-c="all">ทุกประเภท</button>${HTYPES.map(([k, n]) => `<button class="fchip ${HF.c === k ? 'on' : ''}" data-c="${k}">${n} <small>${HOTEL_LIST.filter(h => h.tags.includes(k)).length}</small></button>`).join('')}</div>
+    <div id="hout"></div>`;
+  const draw = () => {
+    const q = HF.q.trim().toLowerCase();
+    let list = HOTEL_LIST.filter(h => zOk(h) && (HF.s === 'all' || (HF.s === 'plan' ? h.plan : !h.plan)) && (HF.c === 'all' || h.tags.includes(HF.c)) && (!q || (h.n + ' ' + h.d).toLowerCase().includes(q)));
+    const sorter = HF.o === 'price' ? (a, b) => (a.usd ?? 1e9) - (b.usd ?? 1e9) : HF.o === 'rating' ? (a, b) => (b.rating ?? -1) - (a.rating ?? -1) : null;
+    const plan = list.filter(h => h.plan), other = list.filter(h => !h.plan);
+    if (sorter) { plan.sort(sorter); other.sort(sorter); }
+    else other.sort((a, b) => HZONES.indexOf(a.z) - HZONES.indexOf(b.z));
+    const sec = (title, arr) => arr.length ? `<h3 class="gh">${title} <span>${arr.length}</span></h3><div class="fgrid">${arr.map(hotelCard).join('')}</div>` : '';
+    $('#hout').innerHTML = (sec('ในแผนของเรา', plan) + sec(plan.length ? 'ตัวเลือกเพิ่มเติม' : 'ที่พัก', other)) || '<p class="plain" style="margin-top:24px">ไม่มีรายการตรงกับตัวกรอง</p>';
+  };
+  draw();
+  $('#hq').oninput = e => { HF.q = e.target.value; draw(); };
+  $('#hz').onchange = e => { HF.z = e.target.value; draw(); };
+  $('#ho').onchange = e => { HF.o = e.target.value; draw(); };
+  $$('#hscope button').forEach(b => b.onclick = () => { HF.s = b.dataset.s; renderHotels(); });
+  $$('#hcats button').forEach(b => b.onclick = () => { HF.c = b.dataset.c; renderHotels(); });
+}
+
 /* ---------- cost ---------- */
 const COST_KEY = 'tw2026-cost-v5';
 const defaults = { s: { ...D.settings }, items: D.items.map(i => ({ price: i.price, qty: i.qty })) };
@@ -521,6 +565,6 @@ function renderTodo() {
 
 /* ---------- boot ---------- */
 parseHash();
-renderPlaces(); renderFood(); renderTransport(); renderCost(); renderTodo();
+renderPlaces(); renderFood(); renderHotels(); renderTransport(); renderCost(); renderTodo();
 window.addEventListener('hashchange', () => { parseHash(); show(); });
 show();

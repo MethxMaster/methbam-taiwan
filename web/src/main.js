@@ -3,6 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import D from './trip.json';
 import { TODO } from './todo.js';
+import { DAY_INFO, COST_DAYS } from './days.js';
 
 /* ---------- helpers ---------- */
 const $ = (s, r = document) => r.querySelector(s);
@@ -25,7 +26,8 @@ const ROUTE = { D1: ['AIR', 'E1'], D2: ['E1', 'F1'], D3: ['F1', 'A1', 'B1'], D4:
 const GROUP_SHORT = { A: 'ไทเป', B: 'อูไหล', C: 'จีหลง', D: 'จิ่วเฟิ่น', E: 'อาลีซาน', F: 'SML', G: 'ทางผ่าน' };
 const gk = p => p.code.replace(/\d+/g, '');
 const dayLabel = d => `${d.wd} ${new Date(d.date + 'T00:00:00').toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}`;
-const dayShort = d => new Date(d.date + 'T00:00:00').toLocaleDateString('th-TH', { weekday: 'short' }).replace('.', '');
+const WD = { 'พุธ': 'พุธ', 'พฤหัสบดี': 'พฤ.', 'ศุกร์': 'ศุกร์', 'เสาร์': 'เสาร์', 'อาทิตย์': 'อา.' };
+const dayShort = d => WD[d.wd] || d.wd;
 const modeIcon = m => /HSR/.test(m) ? '🚄' : /ตม|รอ/.test(m) ? '🛂' : /รถไฟป่า/.test(m) ? '🚂' : /Airport MRT|MRT/.test(m) ? '🚇' : /บัส|รถเมล์/.test(m) ? '🚌' : /รถไฟ/.test(m) ? '🚆' : /แท็กซี่/.test(m) ? '🚕' : '🚶';
 
 /* ---------- header countdown ---------- */
@@ -42,7 +44,7 @@ countdown();
 
 /* ---------- state / routing ---------- */
 const TABS = ['plan', 'map', 'places', 'cost', 'todo'];
-let state = { tab: 'plan', day: 'D1' };
+let state = { tab: 'plan', day: 'all' };
 (() => {
   const now = new Date();
   if (now >= TRIP_START && now < TRIP_END) state.day = DAYS[Math.min(4, Math.floor((now - TRIP_START) / 864e5))].day;
@@ -50,11 +52,11 @@ let state = { tab: 'plan', day: 'D1' };
 function parseHash() {
   const [t, d] = (location.hash || '').slice(1).split('/');
   if (TABS.includes(t)) state.tab = t;
-  if (DAYS.some(x => x.day === d)) state.day = d;
+  if (t === 'plan') state.day = DAYS.some(x => x.day === d) ? d : 'all';
 }
 function go(tab, day) {
   state.tab = tab; if (day) state.day = day;
-  history.replaceState(null, '', `#${tab}${tab === 'plan' ? '/' + state.day : ''}`);
+  history.replaceState(null, '', `#${tab}${tab === 'plan' && state.day !== 'all' ? '/' + state.day : ''}`);
   show();
 }
 function show() {
@@ -96,18 +98,26 @@ const NOTES = [
   'อูไหลอยู่เย็นวันศุกร์ ถ้าถึงไทเปช้ากว่า ~15:30 ให้เลื่อนไปเช้าวันอาทิตย์ (ออก ~08:00 และถึงสนามบินไม่เกิน ~17:00)',
   'ยังไม่มีพยากรณ์จริงของ 16–20 ธ.ค. อากาศในแต่ละวันเป็นค่าเฉลี่ยเดือน ธ.ค. · เช็คพยากรณ์ (CWA / Windy) อีกครั้ง ~11–13 ธ.ค. · เช็คล่าสุด: ยังไม่ได้เช็ค',
 ];
+function dayCosts(day) {
+  const rows = [];
+  D.items.forEach((i, idx) => {
+    const m = COST_DAYS.find(c => i.item.includes(c.m));
+    if (m && m.days.includes(day)) rows.push({ name: i.item.replace(/\s*\(.*$/, '').replace(/ ✅.*$/, ''), v: calc(i, idx).total / m.days.length });
+  });
+  return rows;
+}
+function subTabs(cur) {
+  const items = [['all', '📋', 'รวม', ''], ...DAYS.map(d => [d.day, '', d.day, `${dayShort(d)} ${new Date(d.date + 'T00:00:00').getDate()}`])];
+  return `<div class="days sub">${items.map(([v, ic, a, b]) => `<button class="dp ${v === cur ? 'on' : ''}" data-day="${v}" style="${v === cur ? `background:${v === 'all' ? 'var(--brand)' : dayColor(v)}` : ''}"><b>${ic ? ic + ' ' : ''}${a}</b>${b ? `<span>${b}</span>` : '<span>ภาพรวม</span>'}</button>`).join('')}</div>`;
+}
+function bindDay(root) {
+  $$('[data-day]', root).forEach(b => b.onclick = () => { go('plan', b.dataset.day); window.scrollTo({ top: 0 }); });
+  $$('[data-goto]', root).forEach(b => b.onclick = () => go(b.dataset.goto));
+}
 function renderPlan() {
-  const d = DAYS.find(x => x.day === state.day);
-  const i = DAYS.indexOf(d);
-  const places = (ORDER[d.day] || []).map(c => byCode[c]);
-  const legs = LEGS.filter(l => l.day === d.day);
-  const visit = places.reduce((s, p) => s + p.hours, 0);
-  const travel = legs.reduce((s, l) => s + l.min, 0) / 60;
-  const left = d.avail - visit - travel;
-  const [cls, txt] = left < 0 ? ['over', 'แน่นเกิน'] : left < 1.5 ? ['tight', 'ตึง'] : ['ok', 'โอเค'];
-  const pct = x => Math.max(0, Math.min(100, x / d.avail * 100));
-  const steps = d.prog.split('→').map(s => s.trim()).filter(Boolean);
-  const dc = dayColor(d.day);
+  if (state.day === 'all') renderOverview(); else renderDay();
+}
+function renderOverview() {
   $('#tab-plan').innerHTML = `<div class="stack">
     <div class="hero">
       <h2>แผนเที่ยวไต้หวัน 5 วัน 4 คืน</h2>
@@ -121,17 +131,45 @@ function renderPlan() {
     </div>
     <details class="alert"><summary>⚠️ ต้องเช็คก่อนจอง (${NOTES.length} ข้อ)</summary><ul>${NOTES.map(n => `<li>${esc(n)}</li>`).join('')}</ul></details>
   </div>
-  <div class="days" id="days">${DAYS.map(x => `<button class="dp ${x.day === d.day ? 'on' : ''}" data-day="${x.day}" style="${x.day === d.day ? `background:${dayColor(x.day)}` : ''}"><b>${x.day}</b><span>${esc(dayShort(x))} ${new Date(x.date + 'T00:00:00').getDate()}</span></button>`).join('')}</div>
-  <div class="stack">
+  ${subTabs('all')}
+  <div class="stack">${DAYS.map(d => {
+    const info = DAY_INFO[d.day];
+    const cost = dayCosts(d.day).reduce((s, r) => s + r.v, 0);
+    return `<button class="ov" data-day="${d.day}" style="--dc:${dayColor(d.day)}">
+      <div class="ov-h"><span class="ov-d">${d.day}</span><span class="ov-t">${esc(dayLabel(d))}</span><span class="ov-z">${esc(d.zone)}</span></div>
+      <div class="ov-p">${esc(info.headline)}</div>
+      <div class="ov-m"><span>🛏️ ${esc(d.sleep)}</span><span>🎫 ${info.book.length ? `ต้องจอง ${info.book.length} รายการ` : 'ไม่ต้องจองล่วงหน้า'}</span><span>💰 ~฿${thb(cost)}</span></div>
+    </button>`; }).join('')}</div>`;
+  bindDay($('#tab-plan'));
+}
+function renderDay() {
+  const d = DAYS.find(x => x.day === state.day);
+  const i = DAYS.indexOf(d);
+  const info = DAY_INFO[d.day];
+  const places = (ORDER[d.day] || []).map(c => byCode[c]);
+  const legs = LEGS.filter(l => l.day === d.day);
+  const visit = places.reduce((s, p) => s + p.hours, 0);
+  const travel = legs.reduce((s, l) => s + l.min, 0) / 60;
+  const left = d.avail - visit - travel;
+  const [cls, txt] = left < 0 ? ['over', 'แน่นเกิน'] : left < 1.5 ? ['tight', 'ตึง'] : ['ok', 'โอเค'];
+  const pct = x => Math.max(0, Math.min(100, x / d.avail * 100));
+  const dc = dayColor(d.day);
+  const costs = dayCosts(d.day), ctot = costs.reduce((s, r) => s + r.v, 0);
+  $('#tab-plan').innerHTML = subTabs(d.day) + `<div class="stack">
     <div class="card" style="border-top:5px solid ${dc}">
       <div class="dayhead"><h2>${esc(d.day)} · ${esc(dayLabel(d))}</h2><span class="badge ${cls}">${txt} · เหลือ ${fmtH(left)} ชม.</span></div>
       <div class="zone">${esc(d.zone)}</div>
-      <ol class="tl" style="--dc:${dc}">${steps.map((s, k) => `<li><span class="dot">${k + 1}</span>${esc(s)}</li>`).join('')}</ol>
+      <p class="headline">${esc(info.headline)}</p>
       <div class="sleep">🛏️ <b>นอน:</b> ${esc(d.sleep)}</div>
-      <div class="note">💡 ${esc(d.note)}</div>
       <div class="bar"><i style="width:${pct(visit)}%;background:#2563eb"></i><i style="width:${pct(travel)}%;background:var(--accent)"></i></div>
       <div class="small"><span style="color:#2563eb">■</span> เที่ยว ${fmtH(visit)} ชม. · <span style="color:var(--accent)">■</span> เดินทาง ${fmtH(travel)} ชม. · เวลาที่มี ${d.avail} ชม.</div>
     </div>
+    <div class="card"><h2 class="h2" style="margin-top:0">🕒 ตารางเวลา <span class="small">(ประมาณ)</span></h2>
+      <div class="sch" style="--dc:${dc}">${info.schedule.map(s => `<div class="sr k-${s.k}"><div class="st">${esc(s.t)}</div><div class="si">${s.i}</div><div class="sc"><div class="stt">${esc(s.title)}</div>${s.d ? `<div class="sd">${esc(s.d)}</div>` : ''}</div></div>`).join('')}</div>
+      <p class="small" style="margin-top:8px">💡 ${esc(d.note)}</p>
+    </div>
+    ${info.book.length ? `<div class="card"><h2 class="h2" style="margin-top:0">🎫 ต้องจอง/ซื้อสำหรับวันนี้</h2>${info.book.map(b => `<div class="bk"><div><b>${esc(b.t)}</b><span class="due">${esc(b.due)}</span><div class="small">${esc(b.d)}</div></div></div>`).join('')}<button class="btn" data-goto="todo" style="margin-top:10px">ไปเช็คลิสต์เตรียมตัว →</button></div>` : ''}
+    ${places.length ? `<div><h2 class="h2" style="margin-top:0">📍 สถานที่วันนี้</h2><div class="pcards">${places.map(p => placeCard(p, true)).join('')}</div></div>` : ''}
     <div class="card"><h2 class="h2" style="margin-top:0">🌦️ อากาศและการเตรียมตัว</h2>
       <div class="wx">
         <div><span>🌡️</span><span><span class="lbl">อากาศปกติ ธ.ค.:</span> ${esc(d.wx)}</span></div>
@@ -139,11 +177,15 @@ function renderPlan() {
       </div>
       <div class="rain" style="margin-top:12px">☔ <b>ถ้าฝนตก:</b> ${esc(d.rain)}</div>
     </div>
-    ${places.length ? `<div><h2 class="h2" style="margin-top:0">📍 สถานที่วันนี้</h2><div class="pcards">${places.map(p => placeCard(p, true)).join('')}</div></div>` : ''}
-    <div><h2 class="h2" style="margin-top:0">🧭 การเดินทาง</h2><div class="legs">${legs.map(l => `<div class="leg"><span class="ic">${modeIcon(l.mode)}</span><div><div class="t">${esc(l.frm)} → ${esc(l.to)}</div><div class="m">${esc(l.mode)}${l.km ? ` · ${l.km} กม.` : ''}${l.note ? ` · ${esc(l.note)}` : ''}</div></div><span class="mn">${l.min >= 60 ? fmtH(l.min / 60) + ' ชม.' : l.min + ' น.'}</span></div>`).join('')}</div></div>
-    <div class="pn">${i > 0 ? `<button data-day="${DAYS[i - 1].day}">← ${DAYS[i - 1].day}</button>` : '<span style="flex:1"></span>'}${i < DAYS.length - 1 ? `<button data-day="${DAYS[i + 1].day}">${DAYS[i + 1].day} →</button>` : '<span style="flex:1"></span>'}</div>
+    <div class="card"><h2 class="h2" style="margin-top:0">🆘 แผนสำรอง</h2><ul class="ul">${info.backup.map(b => `<li>${esc(b)}</li>`).join('')}</ul></div>
+    ${info.food.length ? `<div class="card"><h2 class="h2" style="margin-top:0">🍜 ของกินที่น่าลอง</h2><div class="foods">${info.food.map(f => `<span>${esc(f)}</span>`).join('')}</div><p class="small" style="margin-top:8px">เป็นข้อแนะนำทั่วไป ไม่ได้จองหรือเช็คร้านไว้</p></div>` : ''}
+    <details class="card" open><summary class="sum">🧭 การเดินทาง (${legs.length} ช่วง)</summary><div class="legs" style="margin-top:10px">${legs.map(l => `<div class="leg"><span class="ic">${modeIcon(l.mode)}</span><div><div class="t">${esc(l.frm)} → ${esc(l.to)}</div><div class="m">${esc(l.mode)}${l.km ? ` · ${l.km} กม.` : ''}${l.note ? ` · ${esc(l.note)}` : ''}</div></div><span class="mn">${l.min >= 60 ? fmtH(l.min / 60) + ' ชม.' : l.min + ' น.'}</span></div>`).join('')}</div></details>
+    <details class="card"><summary class="sum">💰 ค่าใช้จ่ายวันนี้ ~฿${thb(ctot)} <span class="small">(2 คน ไม่รวมเผื่อ)</span></summary>
+      <div style="margin-top:8px">${costs.map(r => `<div class="rowkv"><span>${esc(r.name)}</span><b>฿${thb(r.v)}</b></div>`).join('') || '<p class="small">ไม่มีรายการ</p>'}</div>
+      <p class="small" style="margin-top:6px">ตั๋วเครื่องบิน สัมภาระ eSIM ประกัน ไม่ผูกกับวัน · แก้ราคาได้ที่แท็บงบ</p></details>
+    <div class="pn">${i > 0 ? `<button data-day="${DAYS[i - 1].day}">← ${DAYS[i - 1].day}</button>` : '<button data-day="all">← รวม</button>'}${i < DAYS.length - 1 ? `<button data-day="${DAYS[i + 1].day}">${DAYS[i + 1].day} →</button>` : '<button data-day="all">กลับไปแผนรวม</button>'}</div>
   </div>`;
-  $$('#tab-plan [data-day]').forEach(b => b.onclick = () => { go('plan', b.dataset.day); window.scrollTo({ top: 0 }); });
+  bindDay($('#tab-plan'));
 }
 function placeCard(p, showTag) {
   const src = img(p);

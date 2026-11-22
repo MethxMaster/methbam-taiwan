@@ -3,7 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import D from './trip.json';
 import { TODO } from './todo.js';
-import { DAY_INFO, COST_DAYS } from './days.js';
+import { DAY_INFO, COST_DAYS, LOCS, HOTELS, HOTEL_FOR_DAY } from './days.js';
 
 /* ---------- helpers ---------- */
 const $ = (s, r = document) => r.querySelector(s);
@@ -107,18 +107,60 @@ function dayCosts(day) {
   return rows;
 }
 function subTabs(cur) {
-  const items = [['all', '📋', 'รวม', ''], ...DAYS.map(d => [d.day, '', d.day, `${dayShort(d)} ${new Date(d.date + 'T00:00:00').getDate()}`])];
-  return `<div class="days sub">${items.map(([v, ic, a, b]) => `<button class="dp ${v === cur ? 'on' : ''}" data-day="${v}" style="${v === cur ? `background:${v === 'all' ? 'var(--brand)' : dayColor(v)}` : ''}"><b>${ic ? ic + ' ' : ''}${a}</b>${b ? `<span>${b}</span>` : '<span>ภาพรวม</span>'}</button>`).join('')}</div>`;
+  const items = [['all', '📋', 'ภาพรวม', ''], ...DAYS.map(d => [d.day, '', d.day, `${dayShort(d)} ${new Date(d.date + 'T00:00:00').getDate()}`])];
+  return `<div class="days sub">${items.map(([v, ic, a, b]) => `<button class="dp ${v === cur ? 'on' : ''}" data-day="${v}" style="${v === cur ? `background:${v === 'all' ? 'var(--brand)' : dayColor(v)}` : ''}"><b>${ic ? ic + ' ' : ''}${a}</b>${b ? `<span>${b}</span>` : '<span>ทั้งทริป</span>'}</button>`).join('')}</div>`;
 }
 function bindDay(root) {
   $$('[data-day]', root).forEach(b => b.onclick = () => { go('plan', b.dataset.day); window.scrollTo({ top: 0 }); });
   $$('[data-goto]', root).forEach(b => b.onclick = () => go(b.dataset.goto));
 }
+const enc = encodeURIComponent;
+const gmSearch = q => 'https://www.google.com/maps/search/?api=1&query=' + enc(q);
+const gmDir = (from, to) => `https://www.google.com/maps/dir/?api=1&origin=${enc(from)}&destination=${enc(to)}&travelmode=transit`;
+function resolveLoc(c) {
+  if (!c) return null;
+  if (byCode[c]) { const p = byCode[c]; return { key: c, name: p.name, lat: p.lat, lng: p.lng, q: p.search + ' Taiwan' }; }
+  return LOCS[c] ? { key: c, ...LOCS[c] } : null;
+}
+const OVERVIEW = {
+  D1: { route: 'เถาหยวน → เจียอี้ → อาลีซาน', how: '🚇 MRT · 🚄 HSR · 🚌 บัส' },
+  D2: { route: 'อาลีซาน (จู้ซาน) → SML', how: '🚂 รถไฟป่า · 🚌 บัส' },
+  D3: { route: 'SML → ไถจง → ไทเป → อูไหล', how: '🚌 บัส · 🚄 HSR · 🚇 MRT' },
+  D4: { route: 'ไทเป → จีหลง → จิ่วเฟิ่น → ไทเป', how: '🚆 รถไฟ · 🚌 บัส' },
+  D5: { route: 'วัดหลงซาน/ซีเหมินติง → สนามบิน', how: '🚇 MRT' },
+};
+let miniMap = null;
+function drawMiniMap(el, stops, color) {
+  if (miniMap) { miniMap.remove(); miniMap = null; }
+  const m = L.map(el, { scrollWheelZoom: false, dragging: !L.Browser.mobile, zoomControl: true });
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Tiles &copy; Esri' }).addTo(m);
+  const pts = [];
+  stops.forEach(s => {
+    const icon = s.icon || String(s.n);
+    L.marker([s.lat, s.lng], { icon: pinIcon(icon, s.color || color, false) }).bindTooltip(`${s.icon ? '' : s.n + '. '}${s.name}`).addTo(m);
+    pts.push([s.lat, s.lng]);
+  });
+  if (pts.length > 1) L.polyline(pts, { color, weight: 3.5, opacity: .8, dashArray: '7 8' }).addTo(m);
+  if (pts.length) m.fitBounds(pts, { padding: [36, 36], maxZoom: 14 }); else m.setView([24.3, 121.1], 8);
+  miniMap = m;
+  setTimeout(() => m.invalidateSize(), 60);
+}
+function hotelCard(hk, dayId) {
+  const h = HOTELS[hk]; const l = resolveLoc(h.loc);
+  const same = (dayId === 'D4' || dayId === 'D5') ? '<p class="small" style="margin:6px 0">ที่พักเดียวกับคืนที่แล้ว</p>' : '';
+  return `<div class="card"><h2 class="h2" style="margin-top:0">🛏️ ที่พักแนะนำ</h2><div class="small"><b>${esc(h.title)}</b></div>${same}
+    <p style="margin:6px 0 10px;font-size:14.5px">${esc(h.why)}</p>
+    ${h.picks.map((p, k) => `<div class="hp"><div class="hp-h"><b>${k + 1}. ${esc(p.n)}</b>${p.tag ? `<span class="badge">${esc(p.tag)}</span>` : ''}</div><div class="small">${esc(p.d)}</div><a class="mapl" href="${gmSearch(p.q)}" target="_blank" rel="noopener">📍 ดูในแผนที่ ↗</a></div>`).join('')}
+    <p class="small" style="margin-top:10px">⚠️ คัดจากเว็บจองห้อง/รีวิว ยังไม่ได้เช็คราคาและห้องว่างของวันที่ไป ราคาตัวอย่างเป็นคนละวันกัน ตรวจสอบก่อนจอง</p>
+    <a class="mapl" href="${gmSearch(l.q)}" target="_blank" rel="noopener">🗺️ ดูย่านนี้ใน Google Maps ↗</a></div>`;
+}
 function renderPlan() {
+  if (miniMap) { miniMap.remove(); miniMap = null; }
   if (state.day === 'all') renderOverview(); else renderDay();
 }
 function renderOverview() {
-  $('#tab-plan').innerHTML = `<div class="stack">
+  const urgent = TODO.flatMap(g => g.items).filter(x => x.due === 'ทันที' && !(store.get('tw2026-todo-v1') || {})[x.id]);
+  $('#tab-plan').innerHTML = subTabs('all') + `<div class="stack">
     <div class="hero">
       <h2>แผนเที่ยวไต้หวัน 5 วัน 4 คืน</h2>
       <p>ไม่เช่ารถ · เดินทางด้วย HSR / บัส / MRT</p>
@@ -129,18 +171,38 @@ function renderOverview() {
         <div class="hero-cell"><b>💰 งบรวม</b>~฿${thb(costTotal())} (2 คน)</div>
       </div>
     </div>
+    <div class="card"><h2 class="h2" style="margin-top:0">🗺️ เส้นทางทั้งทริป</h2><div id="ovmap" class="mini"></div>
+      <div class="legend">${DAYS.map(d => `<span><i style="background:${dayColor(d.day)}"></i>${d.day}</span>`).join('')}<span>🏨 ที่พัก</span><span>✈ สนามบิน</span></div>
+      <p class="small" style="margin-top:6px">ตำแหน่งโดยประมาณ · กดแต่ละวันด้านล่างเพื่อดูแผนที่รายวันและลิงก์ Google Maps</p></div>
+    ${urgent.length ? `<div class="card"><h2 class="h2" style="margin-top:0">🔥 ต้องทำก่อน (${urgent.length})</h2>${urgent.map(x => `<div class="bk"><b>${esc(x.t)}</b><div class="small">${esc(x.d)}</div></div>`).join('')}<button class="btn" data-goto="todo" style="margin-top:8px">ไปเช็คลิสต์เตรียมตัว →</button></div>` : ''}
+    <h2 class="h2" style="margin:6px 0 0">📅 แต่ละวัน</h2>
+    ${DAYS.map(d => {
+      const info = DAY_INFO[d.day], ov = OVERVIEW[d.day], h = HOTELS[HOTEL_FOR_DAY[d.day]];
+      const cost = dayCosts(d.day).reduce((s, r) => s + r.v, 0);
+      return `<button class="ov" data-day="${d.day}" style="--dc:${dayColor(d.day)}">
+        <div class="ov-h"><span class="ov-d">${d.day}</span><span class="ov-t">${esc(dayLabel(d))}</span></div>
+        <div class="ov-r">${esc(ov.route)}</div>
+        <div class="ov-p">${esc(info.headline)}</div>
+        <div class="ov-m"><span>${ov.how}</span><span>🛏️ ${d.day === 'D5' ? 'บินกลับ' : esc(h.title.split(' · ')[0]) + ' — ' + esc(h.picks[0].n)}</span></div>
+        <div class="ov-m"><span>🎫 ${info.book.length ? `ต้องจอง ${info.book.length} รายการ` : 'ไม่ต้องจองล่วงหน้า'}</span><span>🕒 ${info.schedule.length} ช่วงเวลา</span><span>💰 ~฿${thb(cost)}</span></div>
+      </button>`; }).join('')}
     <details class="alert"><summary>⚠️ ต้องเช็คก่อนจอง (${NOTES.length} ข้อ)</summary><ul>${NOTES.map(n => `<li>${esc(n)}</li>`).join('')}</ul></details>
-  </div>
-  ${subTabs('all')}
-  <div class="stack">${DAYS.map(d => {
-    const info = DAY_INFO[d.day];
-    const cost = dayCosts(d.day).reduce((s, r) => s + r.v, 0);
-    return `<button class="ov" data-day="${d.day}" style="--dc:${dayColor(d.day)}">
-      <div class="ov-h"><span class="ov-d">${d.day}</span><span class="ov-t">${esc(dayLabel(d))}</span><span class="ov-z">${esc(d.zone)}</span></div>
-      <div class="ov-p">${esc(info.headline)}</div>
-      <div class="ov-m"><span>🛏️ ${esc(d.sleep)}</span><span>🎫 ${info.book.length ? `ต้องจอง ${info.book.length} รายการ` : 'ไม่ต้องจองล่วงหน้า'}</span><span>💰 ~฿${thb(cost)}</span></div>
-    </button>`; }).join('')}</div>`;
+  </div>`;
   bindDay($('#tab-plan'));
+  // เส้นทางรวม: สนามบิน → อาลีซาน → SML → ไทเป → (จีหลง/จิ่วเฟิ่น/อูไหล) → สนามบิน
+  const el = $('#ovmap'); if (!el) return;
+  const m = L.map(el, { scrollWheelZoom: false, dragging: !L.Browser.mobile });
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Tiles &copy; Esri' }).addTo(m);
+  const P_ = k => resolveLoc(k);
+  const segs = { D1: ['TPE', 'HSR_TY', 'HSR_CY', 'ALI_STN'], D2: ['ALI_STN', 'E2', 'SHUISHE', 'HOTEL_SML'], D3: ['HOTEL_SML', 'HSR_TC', 'TPE_MAIN', 'B1', 'HOTEL_TPE'], D4: ['HOTEL_TPE', 'KEELUNG_STN', 'D1', 'HOTEL_TPE'], D5: ['HOTEL_TPE', 'A2', 'A1', 'TPE'] };
+  const pts = [];
+  Object.entries(segs).forEach(([dd, ks]) => {
+    const ll = ks.map(P_).filter(Boolean).map(s => [s.lat, s.lng]);
+    L.polyline(ll, { color: dayColor(dd), weight: 3.5, opacity: .8, dashArray: '7 8' }).addTo(m); pts.push(...ll);
+  });
+  [['HOTEL_ALI', '🏨'], ['HOTEL_SML', '🏨'], ['HOTEL_TPE', '🏨'], ['TPE', '✈']].forEach(([k, ic]) => { const s = P_(k); L.marker([s.lat, s.lng], { icon: pinIcon(ic, '#172026', false) }).bindTooltip(s.name).addTo(m); });
+  m.fitBounds(pts, { padding: [30, 30] });
+  miniMap = m; setTimeout(() => m.invalidateSize(), 60);
 }
 function renderDay() {
   const d = DAYS.find(x => x.day === state.day);
@@ -155,6 +217,16 @@ function renderDay() {
   const pct = x => Math.max(0, Math.min(100, x / d.avail * 100));
   const dc = dayColor(d.day);
   const costs = dayCosts(d.day), ctot = costs.reduce((s, r) => s + r.v, 0);
+  // จุดที่มีพิกัด เรียงตามลำดับในตารางเวลา (ตัดจุดซ้ำติดกัน)
+  const stops = []; let prev = null;
+  const steps = info.schedule.map(s => {
+    const l = resolveLoc(s.loc); let n = null, from = null;
+    if (l) {
+      if (!prev || prev.key !== l.key) { stops.push({ ...l, n: stops.length + 1, icon: l.key.startsWith('HOTEL_') ? '🏨' : l.key === 'TPE' ? '✈' : null }); }
+      n = [...stops].reverse().find(x => x.key === l.key)?.n; from = prev && prev.key !== l.key ? prev : null; prev = l;
+    }
+    return { ...s, l, n, from };
+  });
   $('#tab-plan').innerHTML = subTabs(d.day) + `<div class="stack">
     <div class="card" style="border-top:5px solid ${dc}">
       <div class="dayhead"><h2>${esc(d.day)} · ${esc(dayLabel(d))}</h2><span class="badge ${cls}">${txt} · เหลือ ${fmtH(left)} ชม.</span></div>
@@ -164,10 +236,16 @@ function renderDay() {
       <div class="bar"><i style="width:${pct(visit)}%;background:#2563eb"></i><i style="width:${pct(travel)}%;background:var(--accent)"></i></div>
       <div class="small"><span style="color:#2563eb">■</span> เที่ยว ${fmtH(visit)} ชม. · <span style="color:var(--accent)">■</span> เดินทาง ${fmtH(travel)} ชม. · เวลาที่มี ${d.avail} ชม.</div>
     </div>
-    <div class="card"><h2 class="h2" style="margin-top:0">🕒 ตารางเวลา <span class="small">(ประมาณ)</span></h2>
-      <div class="sch" style="--dc:${dc}">${info.schedule.map(s => `<div class="sr k-${s.k}"><div class="st">${esc(s.t)}</div><div class="si">${s.i}</div><div class="sc"><div class="stt">${esc(s.title)}</div>${s.d ? `<div class="sd">${esc(s.d)}</div>` : ''}</div></div>`).join('')}</div>
+    <div class="card"><h2 class="h2" style="margin-top:0">🗺️ แผนที่วันนี้</h2><div id="daymap" class="mini"></div>
+      <div class="legend" style="--dc:${dc}">${stops.map(s => `<a href="${gmSearch(s.q)}" target="_blank" rel="noopener"><b class="n" style="background:${dc}">${s.icon || s.n}</b>${esc(s.name)}</a>`).join('')}</div>
+      <p class="small" style="margin-top:6px">ตำแหน่งโดยประมาณ · กดชื่อเพื่อเปิด Google Maps</p></div>
+    <div class="card"><h2 class="h2" style="margin-top:0">🕒 ตารางเวลา <span class="small">(ประมาณ ${info.schedule.length} ช่วง)</span></h2>
+      <div class="sch" style="--dc:${dc}">${steps.map(s => `<div class="sr k-${s.k}"><div class="st">${esc(s.t)}</div><div class="si">${s.i}</div><div class="sc"><div class="stt">${esc(s.title)}</div>${s.d ? `<div class="sd">${esc(s.d)}</div>` : ''}
+        ${(s.dur || s.cost || s.l) ? `<div class="chipset">${s.dur ? `<span>⏱ ${esc(s.dur)}</span>` : ''}${s.cost ? `<span>💰 ${esc(s.cost)}</span>` : ''}${s.l ? `<a href="${gmSearch(s.l.q)}" target="_blank" rel="noopener">📍 ${s.l.key.startsWith('HOTEL_') ? '🏨' : s.n}. ${esc(s.l.name)}</a>` : ''}${s.l && s.from ? `<a href="${gmDir(s.from.q, s.l.q)}" target="_blank" rel="noopener">🧭 เส้นทางจากจุดก่อนหน้า</a>` : ''}</div>` : ''}
+        ${s.tip ? `<div class="tip">💡 ${esc(s.tip)}</div>` : ''}</div></div>`).join('')}</div>
       <p class="small" style="margin-top:8px">💡 ${esc(d.note)}</p>
     </div>
+    ${hotelCard(HOTEL_FOR_DAY[d.day], d.day)}
     ${info.book.length ? `<div class="card"><h2 class="h2" style="margin-top:0">🎫 ต้องจอง/ซื้อสำหรับวันนี้</h2>${info.book.map(b => `<div class="bk"><div><b>${esc(b.t)}</b><span class="due">${esc(b.due)}</span><div class="small">${esc(b.d)}</div></div></div>`).join('')}<button class="btn" data-goto="todo" style="margin-top:10px">ไปเช็คลิสต์เตรียมตัว →</button></div>` : ''}
     ${places.length ? `<div><h2 class="h2" style="margin-top:0">📍 สถานที่วันนี้</h2><div class="pcards">${places.map(p => placeCard(p, true)).join('')}</div></div>` : ''}
     <div class="card"><h2 class="h2" style="margin-top:0">🌦️ อากาศและการเตรียมตัว</h2>
@@ -183,9 +261,10 @@ function renderDay() {
     <details class="card"><summary class="sum">💰 ค่าใช้จ่ายวันนี้ ~฿${thb(ctot)} <span class="small">(2 คน ไม่รวมเผื่อ)</span></summary>
       <div style="margin-top:8px">${costs.map(r => `<div class="rowkv"><span>${esc(r.name)}</span><b>฿${thb(r.v)}</b></div>`).join('') || '<p class="small">ไม่มีรายการ</p>'}</div>
       <p class="small" style="margin-top:6px">ตั๋วเครื่องบิน สัมภาระ eSIM ประกัน ไม่ผูกกับวัน · แก้ราคาได้ที่แท็บงบ</p></details>
-    <div class="pn">${i > 0 ? `<button data-day="${DAYS[i - 1].day}">← ${DAYS[i - 1].day}</button>` : '<button data-day="all">← รวม</button>'}${i < DAYS.length - 1 ? `<button data-day="${DAYS[i + 1].day}">${DAYS[i + 1].day} →</button>` : '<button data-day="all">กลับไปแผนรวม</button>'}</div>
+    <div class="pn">${i > 0 ? `<button data-day="${DAYS[i - 1].day}">← ${DAYS[i - 1].day}</button>` : '<button data-day="all">← ภาพรวม</button>'}${i < DAYS.length - 1 ? `<button data-day="${DAYS[i + 1].day}">${DAYS[i + 1].day} →</button>` : '<button data-day="all">กลับไปภาพรวม</button>'}</div>
   </div>`;
   bindDay($('#tab-plan'));
+  drawMiniMap($('#daymap'), stops, dc);
 }
 function placeCard(p, showTag) {
   const src = img(p);

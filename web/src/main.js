@@ -5,6 +5,7 @@ import D from './trip.json';
 import { TODO } from './todo.js';
 import { DAY_INFO, COST_DAYS, LOCS, HOTELS, HOTEL_FOR_DAY } from './days.js';
 import { TRANSPORT, PACKS, WHEN, STATUS, LINKS } from './transport.js';
+import { FOODS, FZONES, FTYPES } from './foods.js';
 
 /* ---------- helpers ---------- */
 const $ = (s, r = document) => r.querySelector(s);
@@ -59,7 +60,7 @@ const TRIP_END = new Date('2026-12-21T00:00:00+08:00');
 })();
 
 /* ---------- state / routing ---------- */
-const TABS = ['plan', 'map', 'places', 'transport', 'cost', 'todo'];
+const TABS = ['plan', 'map', 'places', 'food', 'transport', 'cost', 'todo'];
 let state = { tab: 'plan', day: 'all', anchor: null, focus: null };
 (() => {
   const now = new Date();
@@ -114,6 +115,8 @@ function openPlace(code) {
 $('#sheet').addEventListener('click', e => { if (e.target.closest('[data-close]')) $('#sheet').hidden = true; });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#sheet').hidden = true; });
 document.addEventListener('click', e => {
+  const fd = e.target.closest('[data-foods]');
+  if (fd) { const v = fd.dataset.foods; Object.assign(FF, { q: '', z: 'all', d: v === 'plan' ? 'all' : v, s: 'plan', c: 'all' }); renderFood(); go('food'); return; }
   const tr = e.target.closest('[data-tr]');
   if (tr) { $('#sheet').hidden = true; go('transport', null, tr.dataset.tr); return; }
   const pl = e.target.closest('[data-places]');
@@ -244,7 +247,7 @@ function renderOverview() {
   const catRows = Object.entries(cats).sort((a, b) => b[1] - a[1]), sub = Object.values(cats).reduce((a, b) => a + b, 0);
   const R = 26, CIRC = 2 * Math.PI * R;
   $('#tab-plan').innerHTML = `<div class="hero"><p class="eyebrow">16–20 ธ.ค. 2569 · 2 คน</p><h1>ไต้หวัน<br>5 วัน 4 คืน</h1><p class="sub">ไม่เช่ารถ ใช้ HSR บัส และ MRT</p>
-      <p class="cta"><button class="more" data-day="D1">ดูแผนรายวัน</button><button class="more" data-places="plan">ดูสถานที่ในแผน</button><button class="more" data-goto="transport">ดูตั๋วและการเดินทาง</button><button class="more" data-goto="cost">ดูงบ</button></p></div>
+      <p class="cta"><button class="more" data-day="D1">ดูแผนรายวัน</button><button class="more" data-places="plan">ดูสถานที่ในแผน</button><button class="more" data-foods="plan">ดูร้านอาหาร</button><button class="more" data-goto="transport">ดูตั๋วและการเดินทาง</button><button class="more" data-goto="cost">ดูงบ</button></p></div>
     ${subTabs('all')}
     <div class="bento">
       <div class="w"><div class="wl">นับถอยหลัง</div><div class="wn">${dl.n}<small>วัน</small></div><div class="wd">${dl.l}</div></div>
@@ -311,14 +314,16 @@ function renderDay() {
   const status = left < 0 ? 'แน่นเกิน' : left < 1.5 ? 'ตึง' : 'โอเค';
   const costs = dayCosts(d.day), ctot = costs.reduce((s, r) => s + r.v, 0);
   const dayTr = TRANSPORT.filter(x => x.d === d.day);
+  const dayFoods = FOODS.filter(x => x.day === d.day);
   const { steps, stops } = computeSteps(d);
   const main = `
     ${blk('ตารางเวลา', tile(steps.map(s => `<div class="sr k-${s.k}"><div class="st">${esc(s.t)}</div><div><div class="stt">${esc(s.title)}</div>${s.d ? `<div class="sd">${esc(s.d)}</div>` : ''}
-      ${(s.dur || s.cost || s.l) ? `<div class="meta">${[s.dur ? esc(s.dur) : '', s.cost ? esc(s.cost) : '', s.l ? `<a href="${gmSearch(s.l.q)}" target="_blank" rel="noopener">แผนที่ ${s.n}</a>` : '', s.l && s.from ? `<a href="${gmDir(s.from.q, s.l.q)}" target="_blank" rel="noopener">เส้นทางจากจุดก่อนหน้า</a>` : ''].filter(Boolean).join('<i>·</i>')}</div>` : ''}
+      ${(s.dur || s.cost || s.l || (s.k === 'eat' && dayFoods.length)) ? `<div class="meta">${[s.dur ? esc(s.dur) : '', s.cost ? esc(s.cost) : '', s.k === 'eat' && dayFoods.length ? `<button class="lnk" data-foods="${d.day}">ดูร้านแนะนำ</button>` : '', s.l ? `<a href="${gmSearch(s.l.q)}" target="_blank" rel="noopener">แผนที่ ${s.n}</a>` : '', s.l && s.from ? `<a href="${gmDir(s.from.q, s.l.q)}" target="_blank" rel="noopener">เส้นทางจากจุดก่อนหน้า</a>` : ''].filter(Boolean).join('<i>·</i>')}</div>` : ''}
       ${s.tip ? `<div class="tip">${esc(s.tip)}</div>` : ''}</div></div>`).join('') + `<p class="note">${esc(d.note)} · เวลาทั้งหมดเป็นค่าประมาณ</p>`))}
     ${blk('ที่พักแนะนำ', tile(hotelBlock(HOTEL_FOR_DAY[d.day], d.day)))}
     ${info.book.length ? blk('ต้องจองหรือซื้อ', tile(info.book.map(b => `<div class="item"><b>${esc(b.t)}</b><span class="due">${esc(b.due)}</span><div class="small">${esc(b.d)}</div></div>`).join('') + '<button class="more" data-goto="todo" style="margin-top:14px;font-size:16px">เปิดรายการเตรียมตัว</button>')) : ''}
     ${places.length ? blk('สถานที่', `<div class="strip">${places.map(p => photo(p)).join('')}</div><button class="more" data-places="${d.day}" style="margin-top:12px;font-size:16px">ดูในแท็บสถานที่</button>`) : ''}
+    ${dayFoods.length ? blk('ร้านอาหารแนะนำวันนี้', tile(dayFoods.map(x => `<button class="item trlink" data-foods="${d.day}"><b>${esc(x.n)}</b> <span class="small">· ${esc(x.meal)}</span><div class="small">${esc(x.dish)} ${stTag(x.s)}</div></button>`).join('') + `<button class="more" data-foods="${d.day}" style="margin-top:12px;font-size:16px">ดูทั้งหมดในแท็บร้านอาหาร</button>`), 'ร้านที่เลือกให้เข้ากับเส้นทางและช่วงเวลาของวัน · เช็คเวลาเปิดก่อนไป') : ''}
     ${dayTr.length ? blk('ตั๋วและวิธีซื้อ', tile(dayTr.map((x, k) => { const r = x.rows.find(rw => /ราคา/.test(rw[0])) || x.rows[0]; return `<button class="item trlink" data-tr="${d.day}-${k}"><b>${esc(x.t)}</b><div class="small">${esc(r[0])}: ${esc(r[1].length > 90 ? r[1].slice(0, 90) + '…' : r[1])} ${stTag(r[2])}</div><span class="go2">ดูวิธีซื้อและราคา</span></button>`; }).join('') + '<p class="note">กดเพื่อไปแท็บเดินทาง · ข้อมูลส่วนใหญ่ยังไม่ยืนยันกับหน้าทางการ ดูป้ายสถานะ</p>'), 'ซื้อที่ไหน ราคา และตารางเวลาของแต่ละช่วงวันนี้') : ''}
     ${blk('การเดินทาง', tile(legs.map(l => `<div class="item"><div style="display:flex;justify-content:space-between;gap:12px"><b>${esc(l.frm)} → ${esc(l.to)}</b><span class="small" style="white-space:nowrap">${l.min >= 60 ? fmtH(l.min / 60) + ' ชม.' : l.min + ' น.'}</span></div><div class="small">${esc(l.mode)}${l.km ? ` · ${l.km} กม.` : ''}${l.note ? ` · ${esc(l.note)}` : ''}</div></div>`).join('')))}`;
   const aside = `
@@ -424,6 +429,44 @@ function renderTransport() {
     ${DAYS.map(d => { const items = TRANSPORT.filter(x => x.d === d.day); return items.length ? blk(`${d.day} · ${esc(dayLabel(d))}`, `<div class="stack">${items.map((x, k) => `<div class="tile" id="tr-${d.day}-${k}"><div class="phead"><b>${esc(x.t)}</b></div>${x.rows.map(([lb, tx, s, src]) => `<div class="trow"><div class="tl2">${esc(lb)}</div><div class="tx">${esc(tx)} ${stTag(s)}${src && src.length ? `<div class="small" style="margin-top:4px">ดูเพิ่ม: ${srcLinks(src)}</div>` : ''}</div></div>`).join('')}</div>`).join('')}</div>`).replace('<div class="blk">', `<div class="blk" id="tr-${d.day}">`) : ''; }).join('')}`;
 }
 
+/* ---------- food ---------- */
+const FF = { q: '', z: 'all', d: 'all', s: 'all', c: 'all' };
+const ftName = k => (FTYPES.find(x => x[0] === k) || [k, k])[1];
+const foodCard = f => `<div class="fd ${f.day ? 'in' : ''}" ${f.day ? `style="--dc:${dayColor(f.day)}"` : ''}>
+  ${f.day ? `<span class="pb2">ในแผน · ${f.day} · ${esc(f.meal)}</span>` : ''}
+  <div class="fn">${esc(f.n)}</div>
+  <div class="fz">${esc(f.z)}</div>
+  <div class="fdish">${esc(f.dish)}</div>
+  <div class="tg">${f.tags.map(k => `<span>${esc(ftName(k))}</span>`).join('')}</div>
+  <p class="fnote">${esc(f.note)}</p>
+  <div class="fmeta">${stTag(f.s)}<a href="${gmSearch(f.q + ' Taiwan')}" target="_blank" rel="noopener">แผนที่</a>${f.src.map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(n)}</a>`).join('')}</div>
+</div>`;
+function renderFood() {
+  const nPlan = FOODS.filter(f => f.day).length;
+  $('#tab-food').innerHTML = `<div class="hero" style="text-align:left;padding:40px 0 0"><p class="eyebrow">ร้านอาหารและของกิน</p><h1>ร้านอาหาร</h1><p class="sub">${FOODS.length} รายการ · <span style="color:var(--ink)">ในแผนของเรา ${nPlan} รายการ</span></p></div>
+    <p class="note">คัดจากบล็อก ไกด์ และรีวิวที่ค้นเจอ ไม่ใช่การจัดอันดับทางการ <b>ไม่มีเวลาเปิด-ปิดหรือราคาที่ยืนยันแล้ว</b> ร้านเปลี่ยนบ่อย เช็คแผนที่/รีวิวล่าสุดก่อนไป ป้ายสถานะ: ${stTag('sec')} มีแหล่งรองสนับสนุน ${stTag('no')} ข้อมูลขัดแย้งหรือไม่ชัด</p>
+    <div class="filters" style="margin-top:18px"><input id="fq" placeholder="ค้นหา เช่น ข้าวไก่งวง หมูป่า ไอศกรีม" value="${esc(FF.q)}">
+      <select id="fz"><option value="all">ทุกโซน</option>${FZONES.map(z => `<option value="${z}" ${FF.z === z ? 'selected' : ''}>${z}</option>`).join('')}</select>
+      <select id="fdd"><option value="all">ทุกวัน</option>${DAYS.map(d => `<option value="${d.day}" ${FF.d === d.day ? 'selected' : ''}>${d.day}</option>`).join('')}</select></div>
+    <div style="margin-top:14px"><div class="seg" id="fscope">${[['all', 'ทั้งหมด'], ['plan', `ในแผน (${nPlan})`], ['none', `ตัวเลือกเพิ่ม (${FOODS.length - nPlan})`]].map(([v, tx]) => `<button class="${FF.s === v ? 'on' : ''}" data-s="${v}">${tx}</button>`).join('')}</div></div>
+    <div class="cats" id="fcats"><button class="fchip ${FF.c === 'all' ? 'on' : ''}" data-c="all">ทุกประเภท</button>${FTYPES.map(([k, n]) => `<button class="fchip ${FF.c === k ? 'on' : ''}" data-c="${k}">${n} <small>${FOODS.filter(f => f.tags.includes(k)).length}</small></button>`).join('')}</div>
+    <div id="fout"></div>`;
+  const draw = () => {
+    const q = FF.q.trim().toLowerCase();
+    const list = FOODS.filter(f => (FF.z === 'all' || f.z === FF.z) && (FF.d === 'all' || f.day === FF.d) && (FF.s === 'all' || (FF.s === 'plan' ? f.day : !f.day)) && (FF.c === 'all' || f.tags.includes(FF.c)) && (!q || (f.n + ' ' + f.dish + ' ' + f.note + ' ' + f.z).toLowerCase().includes(q)));
+    const mealOrder = { 'เช้า': 0, 'กลางวัน': 1, 'เย็น': 2 };
+    const plan = list.filter(f => f.day).sort((a, b) => a.day.localeCompare(b.day) || (mealOrder[a.meal] ?? 9) - (mealOrder[b.meal] ?? 9)), other = list.filter(f => !f.day);
+    const sec = (title, arr) => arr.length ? `<h3 class="gh">${title} <span>${arr.length}</span></h3><div class="fgrid">${arr.map(foodCard).join('')}</div>` : '';
+    $('#fout').innerHTML = (sec('ในแผนของเรา', plan) + sec(plan.length ? 'ตัวเลือกเพิ่มเติม' : 'ร้านอาหาร', other)) || '<p class="plain" style="margin-top:24px">ไม่มีรายการตรงกับตัวกรอง</p>';
+  };
+  draw();
+  $('#fq').oninput = e => { FF.q = e.target.value; draw(); };
+  $('#fz').onchange = e => { FF.z = e.target.value; draw(); };
+  $('#fdd').onchange = e => { FF.d = e.target.value; draw(); };
+  $$('#fscope button').forEach(b => b.onclick = () => { FF.s = b.dataset.s; renderFood(); });
+  $$('#fcats button').forEach(b => b.onclick = () => { FF.c = b.dataset.c; renderFood(); });
+}
+
 /* ---------- cost ---------- */
 const COST_KEY = 'tw2026-cost-v5';
 const defaults = { s: { ...D.settings }, items: D.items.map(i => ({ price: i.price, qty: i.qty })) };
@@ -478,6 +521,6 @@ function renderTodo() {
 
 /* ---------- boot ---------- */
 parseHash();
-renderPlaces(); renderTransport(); renderCost(); renderTodo();
+renderPlaces(); renderFood(); renderTransport(); renderCost(); renderTodo();
 window.addEventListener('hashchange', () => { parseHash(); show(); });
 show();

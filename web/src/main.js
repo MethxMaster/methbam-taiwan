@@ -122,18 +122,79 @@ function bindDay(root) {
   $$('[data-goto]', root).forEach(b => b.onclick = () => go(b.dataset.goto));
 }
 let miniMap = null;
-const pinIcon = (label, cls = '') => L.divIcon({ className: '', iconSize: null, html: `<div class="pin ${cls}">${label}</div>` });
+const pinIcon = (label, cls = '', color = '') => L.divIcon({ className: '', iconSize: null, html: `<div class="pin ${cls}" ${color ? `style="--pc:${color}"` : ''}>${label}</div>` });
 const baseTiles = m => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Tiles &copy; Esri' }).addTo(m);
-const lineStyle = { color: '#0071e3', weight: 3, opacity: .85, dashArray: '1 7', lineCap: 'round' };
-function drawDayMap(el, stops) {
+const DAYC = { D1: '#0071e3', D2: '#af52de', D3: '#ff2d55', D4: '#ff9500', D5: '#34c759' };
+const dayColor = d => DAYC[d] || '#8a949b';
+const MERC = L.Projection.SphericalMercator;
+const bearing = (a, b) => { const p = MERC.project(L.latLng(a)), q = MERC.project(L.latLng(b)); return Math.atan2(q.x - p.x, q.y - p.y) * 180 / Math.PI; };
+// เส้นทางจริงระหว่างสองจุด พร้อมลูกศรบอกทิศ (off = เลื่อนเส้นออกข้างเมื่อเป็นขากลับทางเดิม)
+function addLeg(target, a, b, color, off = 0) {
+  let A = [a.lat, a.lng], B = [b.lat, b.lng];
+  if (off) { const dx = B[1] - A[1], dy = B[0] - A[0], len = Math.hypot(dx, dy) || 1, ox = -dy / len * off, oy = dx / len * off; A = [A[0] + oy, A[1] + ox]; B = [B[0] + oy, B[1] + ox]; }
+  L.polyline([A, B], { color, weight: 4, opacity: .9, lineCap: 'round' }).addTo(target);
+  const mid = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
+  L.marker(mid, { icon: L.divIcon({ className: '', iconSize: [16, 16], iconAnchor: [8, 8], html: `<div class="arr" style="color:${color};transform:rotate(${bearing(A, B)}deg)">▲</div>` }), interactive: false, keyboard: false }).addTo(target);
+}
+// วางหมุดเลข กระจายออกจากกันเมื่อซ้อนกันบนหน้าจอ (คำนวณใหม่ทุกครั้งที่ซูม)
+function spreadPins(m, group, items) {
+  const draw = () => {
+    group.clearLayers();
+    const pts = items.map(it => m.latLngToContainerPoint([it.lat, it.lng]));
+    const clusters = [];
+    items.forEach((it, i) => {
+      const c = clusters.find(cl => Math.hypot(pts[cl[0]].x - pts[i].x, pts[cl[0]].y - pts[i].y) < 24);
+      if (c) c.push(i); else clusters.push([i]);
+    });
+    clusters.forEach(c => c.forEach((i, k) => {
+      let dx = 0, dy = 0;
+      if (c.length > 1) { const ang = (k / c.length) * 2 * Math.PI - Math.PI / 2; dx = Math.cos(ang) * 18; dy = Math.sin(ang) * 18; }
+      const it = items[i];
+      const icon = L.divIcon({ className: '', iconSize: [28, 28], iconAnchor: [14 - dx, 14 - dy], html: `<div class="pin ${it.cls || ''}" ${it.color ? `style="--pc:${it.color}"` : ''}>${it.label}</div>` });
+      const mk = L.marker([it.lat, it.lng], { icon }).bindTooltip(it.tip).addTo(group);
+      if (it.click) mk.on('click', it.click);
+    }));
+  };
+  draw();
+  if (m._spread) m.off('zoomend', m._spread);
+  m._spread = draw; m.on('zoomend', draw);
+}
+function drawDayMap(el, stops, color) {
   const m = L.map(el, { scrollWheelZoom: false, dragging: !L.Browser.mobile });
   baseTiles(m);
+  const items = drawDayRoute(m, stops, color);
   const pts = stops.map(s => [s.lat, s.lng]);
-  stops.forEach(s => L.marker([s.lat, s.lng], { icon: pinIcon(s.mark, s.sq ? 'sq' : '') }).bindTooltip(s.name).addTo(m));
-  if (pts.length > 1) L.polyline(pts, lineStyle).addTo(m);
-  if (pts.length) m.fitBounds(pts, { padding: [36, 36], maxZoom: 14 }); else m.setView([24.3, 121.1], 8);
-  miniMap = m; setTimeout(() => m.invalidateSize(), 60);
+  const group = L.layerGroup().addTo(m);
+  miniMap = m;
+  setTimeout(() => {
+    m.invalidateSize();
+    if (pts.length) m.fitBounds(pts, { padding: [36, 36], maxZoom: 14 }); else m.setView([24.3, 121.1], 8);
+    spreadPins(m, group, items);
+  }, 60);
 }
+function drawDayRoute(target, stops, color) {
+  for (let i = 1; i < stops.length; i++) addLeg(target, stops[i - 1], stops[i], color);
+  return stops.map(s => ({ lat: s.lat, lng: s.lng, label: s.mark, cls: s.sq ? 'sq' : '', color, tip: `${s.mark}. ${s.name}` }));
+}
+// เส้นทางทั้งทริป: จุดหลักเรียงตามลำดับที่ไป (ไทเปที่พักแวะซ้ำ ใช้เลขเดิม)
+const KEY = [
+  ['TPE', 'สนามบินเถาหยวน', 'D1 · D5'], ['HSR_TY', 'HSR เถาหยวน', 'D1'], ['HSR_CY', 'HSR เจียอี้', 'D1'], ['E1', 'อาลีซาน', 'D1–D2'],
+  ['HOTEL_SML', 'SML อีต้าเส้า', 'D2–D3'], ['HSR_TC', 'HSR ไถจง', 'D3'], ['HOTEL_TPE', 'ไทเป ซีเหมินติง', 'D3–D5'], ['B1', 'อูไหล', 'D3'],
+  ['C2', 'จีหลง', 'D4'], ['D1', 'จิ่วเฟิ่น', 'D4'],
+];
+const KEY_LEGS = [
+  ['TPE', 'HSR_TY', 'D1'], ['HSR_TY', 'HSR_CY', 'D1'], ['HSR_CY', 'E1', 'D1'], ['E1', 'HOTEL_SML', 'D2'],
+  ['HOTEL_SML', 'HSR_TC', 'D3'], ['HSR_TC', 'HOTEL_TPE', 'D3'], ['HOTEL_TPE', 'B1', 'D3'], ['B1', 'HOTEL_TPE', 'D3', .006],
+  ['HOTEL_TPE', 'C2', 'D4'], ['C2', 'D1', 'D4'], ['D1', 'HOTEL_TPE', 'D4'], ['HOTEL_TPE', 'TPE', 'D5'],
+];
+function drawOverviewRoute(target) {
+  const pts = [], items = [];
+  KEY_LEGS.forEach(([a, b, d, off]) => addLeg(target, resolveLoc(a), resolveLoc(b), dayColor(d), off || 0));
+  KEY.forEach(([k, name], i) => { const s = resolveLoc(k); pts.push([s.lat, s.lng]); items.push({ lat: s.lat, lng: s.lng, label: i + 1, tip: `${i + 1}. ${name}` }); });
+  return { pts, items };
+}
+const routeFlow = () => `<div class="flow">${KEY.map(([k, n, d], i) => `<span class="fi"><b>${i + 1}</b>${esc(n)}<small>${d}</small></span>`).join('<span class="fa">›</span>')}</div>
+  <div class="dkey">${DAYS.map(d => `<span><i style="background:${dayColor(d.day)}"></i>${d.day} ${esc(OVERVIEW[d.day].split(' → ')[0])} → ${esc(OVERVIEW[d.day].split(' → ').slice(-1)[0])}</span>`).join('')}</div>`;
 function renderPlan() {
   if (miniMap) { miniMap.remove(); miniMap = null; }
   if (state.day === 'all') renderOverview(); else renderDay();
@@ -172,6 +233,7 @@ function renderOverview() {
         <div class="hrow" style="margin-top:8px"><svg class="ring" viewBox="0 0 64 64"><circle cx="32" cy="32" r="${R}" fill="none" stroke="var(--line)" stroke-width="7"/><circle cx="32" cy="32" r="${R}" fill="none" stroke="var(--btn)" stroke-width="7" stroke-linecap="round" stroke-dasharray="${CIRC}" stroke-dashoffset="${CIRC * (1 - nd / all.length)}" transform="rotate(-90 32 32)"/></svg><div class="wn" style="margin:0;font-size:30px">${nd}/${all.length}</div></div>
         <div class="wd">ข้อที่ทำแล้ว</div></div>
       <div class="w"><div class="wl">อุณหภูมิปกติ ธ.ค.</div><div class="wn">0–21<small>°C</small></div><div class="wd">จู้ซานเช้ามืด 0–8° ไทเป 14–21° · ฝนบ่อย</div></div>
+      <div class="w c4"><div class="wl">ลำดับเส้นทาง · เลขตรงกับหมุดบนแผนที่</div>${routeFlow()}</div>
       <div class="w c4"><div class="wl">เส้นทาง 5 วัน</div><div class="timeline">${DAYS.map(d => `<button class="tl-d" data-day="${d.day}"><div class="e">${d.day} · ${esc(WD[d.wd] || d.wd)} ${dayDate(d).getDate()}</div><div class="t">${esc(OVERVIEW[d.day])}</div><div class="s">${d.day === 'D5' ? 'บินกลับ 19:50' : 'นอน ' + esc(HOTELS[HOTEL_FOR_DAY[d.day]].title.split(' · ')[0])}</div></button>`).join('')}</div></div>
       <div class="w c2"><div class="wl">งบแยกตามหมวด</div>${catRows.map(([k, v]) => `<div style="margin-top:12px"><div class="wrow" style="padding:0;border:0"><span style="color:var(--ink)">${esc(k)}</span><b>฿${thb(v)}</b></div><div class="bar1" style="width:${Math.max(1, v / sub * 100)}%"></div></div>`).join('')}</div>
       <div class="w c2"><div class="wl">ต้องทำก่อน${urgent.length ? ` (${urgent.length})` : ''}</div>${urgent.length ? urgent.map(x => `<div class="wrow"><span style="color:var(--ink)">${esc(x.t)}</span></div>`).join('') : '<div class="wd">ไม่มีรายการเร่งด่วน</div>'}<button class="more" data-goto="todo" style="margin-top:12px;font-size:16px">เปิดรายการเตรียมตัว</button></div>
@@ -184,13 +246,10 @@ function renderOverview() {
   const el = $('#ovmap'); if (!el) return;
   const m = L.map(el, { scrollWheelZoom: false, dragging: !L.Browser.mobile });
   baseTiles(m);
-  const Rr = k => resolveLoc(k);
-  const segs = [['TPE', 'HSR_TY', 'HSR_CY', 'ALI_STN'], ['ALI_STN', 'E2', 'SHUISHE', 'HOTEL_SML'], ['HOTEL_SML', 'HSR_TC', 'TPE_MAIN', 'B1', 'HOTEL_TPE'], ['HOTEL_TPE', 'KEELUNG_STN', 'D1', 'HOTEL_TPE'], ['HOTEL_TPE', 'A2', 'A1', 'TPE']];
-  const pts = [];
-  segs.forEach(ks => { const ll = ks.map(Rr).filter(Boolean).map(s => [s.lat, s.lng]); L.polyline(ll, lineStyle).addTo(m); pts.push(...ll); });
-  [['HOTEL_ALI', 'H'], ['HOTEL_SML', 'H'], ['HOTEL_TPE', 'H'], ['TPE', 'A']].forEach(([k, mk]) => { const s = Rr(k); L.marker([s.lat, s.lng], { icon: pinIcon(mk, 'sq') }).bindTooltip(s.name).addTo(m); });
-  m.fitBounds(pts, { padding: [30, 30] });
-  miniMap = m; setTimeout(() => m.invalidateSize(), 60);
+  const { pts, items } = drawOverviewRoute(m);
+  const group = L.layerGroup().addTo(m);
+  miniMap = m;
+  setTimeout(() => { m.invalidateSize(); m.fitBounds(pts, { padding: [30, 30] }); spreadPins(m, group, items); }, 60);
 }
 function hotelBlock(hk, dayId) {
   const h = HOTELS[hk], l = resolveLoc(h.loc);
@@ -199,14 +258,8 @@ function hotelBlock(hk, dayId) {
     ${h.picks.map((p, k) => `<div class="item"><b>${k + 1}. ${esc(p.n)}</b><div class="small">${esc(p.d)}</div><div class="price">ราคา: ${esc(p.price)}</div><div class="small"><a href="${gmSearch(p.q)}" target="_blank" rel="noopener">ดูในแผนที่</a></div></div>`).join('')}
     <p class="note">คัดจากเว็บจองห้องและรีวิว ไม่ใช่การจัดอันดับทางการ ราคาเป็นตัวอย่างคนละวัน ไม่ใช่ราคาวันที่ไป ต้องกรอกวันที่เช็คเอง · <a href="${gmSearch(l.q)}" target="_blank" rel="noopener">ดูย่านนี้ในแผนที่</a></p>`;
 }
-function renderDay() {
-  const d = DAYS.find(x => x.day === state.day), i = DAYS.indexOf(d), info = DAY_INFO[d.day];
-  const places = (ORDER[d.day] || []).map(c => byCode[c]);
-  const legs = LEGS.filter(l => l.day === d.day);
-  const visit = places.reduce((s, p) => s + p.hours, 0), travel = legs.reduce((s, l) => s + l.min, 0) / 60;
-  const left = d.avail - visit - travel;
-  const status = left < 0 ? 'แน่นเกิน' : left < 1.5 ? 'ตึง' : 'โอเค';
-  const costs = dayCosts(d.day), ctot = costs.reduce((s, r) => s + r.v, 0);
+function computeSteps(d) {
+  const info = DAY_INFO[d.day];
   const stops = []; let prev = null;
   const steps = info.schedule.map(s => {
     const l = resolveLoc(s.loc); let n = null, from = null;
@@ -217,6 +270,17 @@ function renderDay() {
     }
     return { ...s, l, n, from };
   });
+  return { steps, stops };
+}
+function renderDay() {
+  const d = DAYS.find(x => x.day === state.day), i = DAYS.indexOf(d), info = DAY_INFO[d.day];
+  const places = (ORDER[d.day] || []).map(c => byCode[c]);
+  const legs = LEGS.filter(l => l.day === d.day);
+  const visit = places.reduce((s, p) => s + p.hours, 0), travel = legs.reduce((s, l) => s + l.min, 0) / 60;
+  const left = d.avail - visit - travel;
+  const status = left < 0 ? 'แน่นเกิน' : left < 1.5 ? 'ตึง' : 'โอเค';
+  const costs = dayCosts(d.day), ctot = costs.reduce((s, r) => s + r.v, 0);
+  const { steps, stops } = computeSteps(d);
   const main = `
     ${blk('ตารางเวลา', tile(steps.map(s => `<div class="sr k-${s.k}"><div class="st">${esc(s.t)}</div><div><div class="stt">${esc(s.title)}</div>${s.d ? `<div class="sd">${esc(s.d)}</div>` : ''}
       ${(s.dur || s.cost || s.l) ? `<div class="meta">${[s.dur ? esc(s.dur) : '', s.cost ? esc(s.cost) : '', s.l ? `<a href="${gmSearch(s.l.q)}" target="_blank" rel="noopener">แผนที่ ${s.n}</a>` : '', s.l && s.from ? `<a href="${gmDir(s.from.q, s.l.q)}" target="_blank" rel="noopener">เส้นทางจากจุดก่อนหน้า</a>` : ''].filter(Boolean).join('<i>·</i>')}</div>` : ''}
@@ -242,7 +306,7 @@ function renderDay() {
     <div class="cols"><div class="main">${main}</div><div class="aside">${aside}</div></div>
     <div class="pn">${i > 0 ? `<button data-day="${DAYS[i - 1].day}">‹ ${DAYS[i - 1].day}</button>` : '<button data-day="all">‹ ภาพรวม</button>'}${i < DAYS.length - 1 ? `<button data-day="${DAYS[i + 1].day}">${DAYS[i + 1].day} ›</button>` : '<button data-day="all">ภาพรวม ›</button>'}</div>`;
   bindDay($('#tab-plan'));
-  drawDayMap($('#daymap'), stops);
+  drawDayMap($('#daymap'), stops, dayColor(d.day));
 }
 function photo(p) {
   const src = img(p);
@@ -250,13 +314,14 @@ function photo(p) {
 }
 
 /* ---------- map tab ---------- */
-let map, layer, mapFilter = 'plan';
+let map, layer, pins, mapFilter = 'plan';
 function initMap() {
   if (map) return;
   map = L.map('map').setView([24.3, 121.1], 8);
   baseTiles(map);
   layer = L.layerGroup().addTo(map);
-  const opts = [['plan', 'แผนของเรา'], ...DAYS.map(d => [d.day, d.day]), ['all', 'ทุกสถานที่']];
+  pins = L.layerGroup().addTo(map);
+  const opts = [['plan', 'ทั้งทริป'], ...DAYS.map(d => [d.day, d.day]), ['all', 'ทุกสถานที่']];
   const bar = $('#mapbar');
   const paint = () => { bar.innerHTML = opts.map(([v, t]) => `<button class="${v === mapFilter ? 'on' : ''}" data-f="${v}">${t}</button>`).join(''); $$('#mapbar button').forEach(b => b.onclick = () => { mapFilter = b.dataset.f; paint(); drawMap(); }); };
   paint();
@@ -264,15 +329,23 @@ function initMap() {
 function drawMap() {
   if (!map) return;
   layer.clearLayers();
-  const pts = [];
-  const days = mapFilter === 'plan' || mapFilter === 'all' ? DAYS.map(d => d.day) : [mapFilter];
-  days.forEach(dd => (ORDER[dd] || []).forEach((c, k) => {
-    const p = byCode[c];
-    L.marker([p.lat, p.lng], { icon: pinIcon(`${dd.slice(1)}.${k + 1}`) }).bindTooltip(p.name).on('click', () => openPlace(c)).addTo(layer); pts.push([p.lat, p.lng]);
-  }));
-  L.marker([AIRPORT.lat, AIRPORT.lng], { icon: pinIcon('A', 'sq') }).bindTooltip('สนามบินเถาหยวน (TPE)').addTo(layer);
-  if (mapFilter === 'all') P.filter(p => !p.day).forEach(p => { L.marker([p.lat, p.lng], { icon: pinIcon(p.code, 's') }).bindTooltip(p.name).on('click', () => openPlace(p.code)).addTo(layer); pts.push([p.lat, p.lng]); });
+  let pts = [], items = [], list = '';
+  if (mapFilter === 'plan') {
+    const r = drawOverviewRoute(layer); pts = r.pts; items = r.items;
+    list = routeFlow();
+  } else if (mapFilter === 'all') {
+    P.forEach(p => { items.push({ lat: p.lat, lng: p.lng, label: p.code, cls: p.day ? '' : 's', color: p.day ? dayColor(p.day) : '', tip: p.name, click: () => openPlace(p.code) }); pts.push([p.lat, p.lng]); });
+    list = '<p class="small">หมุดสีคือสถานที่ที่วางในแผน หมุดเล็กสีเทาคือสถานที่ที่ยังไม่วาง · กดหมุดเพื่อดูรายละเอียด</p>';
+  } else {
+    const d = DAYS.find(x => x.day === mapFilter), color = dayColor(d.day);
+    const { stops } = computeSteps(d);
+    items = drawDayRoute(layer, stops, color);
+    pts = stops.map(s => [s.lat, s.lng]);
+    list = `<div class="small" style="margin-bottom:8px"><b style="color:var(--ink)">${esc(d.day)} · ${esc(dayLabel(d))}</b> · ${esc(OVERVIEW[d.day])}</div><div class="stops">${stops.map(s => `<a href="${gmSearch(s.q)}" target="_blank" rel="noopener"><b>${s.mark}</b>${esc(s.name)}</a>`).join('')}</div>`;
+  }
   if (pts.length) map.fitBounds(pts, { padding: [40, 40], maxZoom: 13 });
+  spreadPins(map, pins, items);
+  $('#maplist').innerHTML = list;
 }
 
 /* ---------- places ---------- */

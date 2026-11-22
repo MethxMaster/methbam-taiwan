@@ -233,3 +233,5 @@ h1 { font-size:44px; line-height:1.1; font-weight:600; letter-spacing:-.025em; m
 .cols .blk > h2 { font-size:24px; }
 .cols .blk { margin-top:44px; }
 .chip { display:inline-block; background:var(--bg); border-radius:980px; padding:3px 12px; font-size:13.5px; margin:0 6px 6px 0; }
+
+@media (min-width:735px) { .w.r2 { grid-row:span 2; } }

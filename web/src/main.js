@@ -162,7 +162,7 @@ function renderOverview() {
         <div class="wrow"><span>16 ธ.ค. VZ566</span><b>BKK 01:50 → TPE 06:30</b></div>
         <div class="wrow"><span>20 ธ.ค. VZ569</span><b>TPE 19:50 → BKK 22:50</b></div>
         <div class="wd">ทั้งสองเที่ยวใช้ Terminal 1 · ไม่มีสัมภาระโหลดฟรี</div></div>
-      <div class="w c2 flush"><div id="ovmap" class="mini"></div></div>
+      <div class="w c2 r2 flush"><div id="ovmap" class="mini"></div></div>
       <div class="w c2"><div class="wl">ที่พัก 4 คืน</div>
         <div class="wrow"><span>16 ธ.ค.</span><b>อาลีซาน</b></div>
         <div class="wrow"><span>17 ธ.ค.</span><b>SML อีต้าเส้า</b></div>

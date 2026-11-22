@@ -282,3 +282,12 @@ h1 { font-size:44px; line-height:1.1; font-weight:600; letter-spacing:-.025em; m
 @media (max-width:430px) { .trow { grid-template-columns:1fr; } .tabs { gap:16px; } }
 
 @media (max-width:430px) { .brand { font-size:13px; } .top-in { gap:10px; padding:0 16px; } .tabs { gap:13px; } .tabs button { font-size:12.5px; } }
+
+/* cross-links */
+.trlink { display:block; width:100%; text-align:left; }
+.trlink .go2 { color:var(--blue); font-size:14.5px; display:inline-block; margin-top:6px; }
+.trlink .go2::after { content:" ›"; }
+.sb .links button.more { color:var(--blue); }
+.ph.flash .pw img { animation:flashring 1.8s ease 1; }
+@keyframes flashring { 0%,60% { box-shadow:0 0 0 5px var(--btn); } 100% { box-shadow:0 0 0 0 transparent; } }
+.tile[id^="tr-"],.blk[id^="tr-"] { scroll-margin-top:70px; }

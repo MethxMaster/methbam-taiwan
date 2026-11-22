@@ -5,6 +5,8 @@ import D from './trip.json';
 import { TODO } from './todo.js';
 import { DAY_INFO, COST_DAYS, LOCS, HOTELS, HOTEL_FOR_DAY } from './days.js';
 import { TRANSPORT, PACKS, WHEN, STATUS, LINKS } from './transport.js';
+import { FOODS, FZONES, FTYPES } from './foods.js';
+import { HOTEL_LIST, HZONES, HTYPES } from './hotels.js';
 
 /* ---------- helpers ---------- */
 const $ = (s, r = document) => r.querySelector(s);
@@ -59,7 +61,7 @@ const TRIP_END = new Date('2026-12-21T00:00:00+08:00');
 })();
 
 /* ---------- state / routing ---------- */
-const TABS = ['plan', 'map', 'places', 'transport', 'cost', 'todo'];
+const TABS = ['plan', 'map', 'places', 'food', 'hotels', 'transport', 'cost', 'todo'];
 let state = { tab: 'plan', day: 'all', anchor: null, focus: null };
 (() => {
   const now = new Date();
@@ -78,13 +80,15 @@ function go(tab, day, anchor) {
   show();
 }
 function show() {
+  document.body.classList.remove('no-scroll'); $$('.mapfs').forEach(e => e.classList.remove('mapfs'));
   $$('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === state.tab));
   TABS.forEach(t => $('#tab-' + t).classList.toggle('on', t === state.tab));
   if (state.tab === 'plan') renderPlan();
+  if (TMITEMS[state.tab]) setTimeout(() => refreshTabMap(state.tab, true), 40);
   if (state.tab === 'map') { initMap(); setTimeout(() => { map.invalidateSize(); drawMap(); }, 30); }
   const target = state.tab === 'transport' && state.anchor ? document.getElementById('tr-' + state.anchor)
-    : state.tab === 'places' && state.focus ? document.querySelector(`#tab-places .ph[data-place="${state.focus}"]`) : null;
-  if (target) { window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY - 70 }); if (state.focus) target.classList.add('flash'); }
+    : state.tab === 'places' && state.focus ? document.querySelector(`#tab-places .ph[data-pick="${state.focus}"]`) : null;
+  if (target) { window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY - 340 }); if (state.focus) { target.classList.add('flash'); const fk = state.focus; setTimeout(() => pickItem('places', fk, 'card'), 150); } }
   else window.scrollTo({ top: 0 });
   state.anchor = null; state.focus = null;
 }
@@ -114,12 +118,20 @@ function openPlace(code) {
 $('#sheet').addEventListener('click', e => { if (e.target.closest('[data-close]')) $('#sheet').hidden = true; });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#sheet').hidden = true; });
 document.addEventListener('click', e => {
+  const ht = e.target.closest('[data-hotels]');
+  if (ht) { const v = ht.dataset.hotels, zm = { ali: 'อาลีซาน', sml: 'SML', tpe: 'ไทเป' }; Object.assign(HF, { q: '', z: zm[v] || 'all', s: v === 'plan' ? 'plan' : 'all', c: 'all', o: 'default' }); renderHotels(); go('hotels'); return; }
+  const fd = e.target.closest('[data-foods]');
+  if (fd) { const v = fd.dataset.foods; Object.assign(FF, { q: '', z: 'all', d: v === 'plan' ? 'all' : v, s: 'plan', c: 'all' }); renderFood(); go('food'); return; }
   const tr = e.target.closest('[data-tr]');
   if (tr) { $('#sheet').hidden = true; go('transport', null, tr.dataset.tr); return; }
   const pl = e.target.closest('[data-places]');
   if (pl) { const v = pl.dataset.places; Object.assign(F, { q: '', g: 'all', d: v === 'plan' ? 'all' : v, s: 'plan', c: 'all' }); renderPlaces(); go('places'); return; }
   const sp = e.target.closest('[data-showplace]');
   if (sp) { const p = byCode[sp.dataset.showplace]; Object.assign(F, { q: '', g: gk(p), d: 'all', s: 'all', c: 'all' }); state.focus = p.code; renderPlaces(); $('#sheet').hidden = true; go('places'); return; }
+  const em = e.target.closest('[data-embed]');
+  if (em) { openEmbed(em.dataset.embed, em.dataset.ename); return; }
+  const pk = e.target.closest('[data-pick]');
+  if (pk && !e.target.closest('a, [data-place], [data-embed]')) { const sec = pk.closest('section'); if (sec) { pickItem(sec.id.replace('tab-', ''), pk.dataset.pick, 'card'); return; } }
   const el = e.target.closest('[data-place]'); if (el) openPlace(el.dataset.place);
 });
 
@@ -154,15 +166,48 @@ function bindDay(root) {
 let miniMap = null;
 const pinIcon = (label, cls = '', color = '') => L.divIcon({ className: '', iconSize: null, html: `<div class="pin ${cls}" ${color ? `style="--pc:${color}"` : ''}>${label}</div>` });
 const baseTiles = m => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Tiles &copy; Esri' }).addTo(m);
+
+// ปุ่มดูแผนที่เต็มจอ (ใช้ CSS ไม่พึ่ง Fullscreen API เพื่อให้ทำงานบน iPhone ได้)
+const FS_OPEN = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+const FS_CLOSE = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+function addFullscreen(m) {
+  const el = m.getContainer();
+  const orig = { drag: m.dragging.enabled(), wheel: m.scrollWheelZoom.enabled() };
+  let on = false, btn;
+  const toggle = (force) => {
+    on = typeof force === 'boolean' ? force : !on;
+    el.classList.toggle('mapfs', on);
+    document.body.classList.toggle('no-scroll', on);
+    btn.innerHTML = on ? FS_CLOSE : FS_OPEN;
+    btn.setAttribute('aria-label', on ? 'ออกจากเต็มจอ' : 'ดูเต็มจอ');
+    if (on) { m.dragging.enable(); m.scrollWheelZoom.enable(); }
+    else { if (!orig.drag) m.dragging.disable(); if (!orig.wheel) m.scrollWheelZoom.disable(); }
+    setTimeout(() => { m.invalidateSize(); if (m._spread) m._spread(); }, 60);
+  };
+  const C = L.Control.extend({
+    options: { position: 'topright' },
+    onAdd() {
+      btn = L.DomUtil.create('button', 'fsbtn');
+      btn.type = 'button'; btn.innerHTML = FS_OPEN; btn.setAttribute('aria-label', 'ดูเต็มจอ');
+      L.DomEvent.disableClickPropagation(btn);
+      btn.onclick = () => toggle();
+      return btn;
+    },
+  });
+  m.addControl(new C());
+  const onKey = e => { if (e.key === 'Escape' && on) toggle(false); };
+  document.addEventListener('keydown', onKey);
+  m.on('unload', () => { document.removeEventListener('keydown', onKey); document.body.classList.remove('no-scroll'); });
+}
 const DAYC = { D1: '#0071e3', D2: '#af52de', D3: '#ff2d55', D4: '#ff9500', D5: '#34c759' };
 const dayColor = d => DAYC[d] || '#8a949b';
 const MERC = L.Projection.SphericalMercator;
 const bearing = (a, b) => { const p = MERC.project(L.latLng(a)), q = MERC.project(L.latLng(b)); return Math.atan2(q.x - p.x, q.y - p.y) * 180 / Math.PI; };
 // เส้นทางจริงระหว่างสองจุด พร้อมลูกศรบอกทิศ (off = เลื่อนเส้นออกข้างเมื่อเป็นขากลับทางเดิม)
-function addLeg(target, a, b, color, off = 0) {
+function addLeg(target, a, b, color, off = 0, w = 4, op = .9) {
   let A = [a.lat, a.lng], B = [b.lat, b.lng];
   if (off) { const dx = B[1] - A[1], dy = B[0] - A[0], len = Math.hypot(dx, dy) || 1, ox = -dy / len * off, oy = dx / len * off; A = [A[0] + oy, A[1] + ox]; B = [B[0] + oy, B[1] + ox]; }
-  L.polyline([A, B], { color, weight: 4, opacity: .9, lineCap: 'round' }).addTo(target);
+  L.polyline([A, B], { color, weight: w, opacity: op, lineCap: 'round' }).addTo(target);
   const mid = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
   L.marker(mid, { icon: L.divIcon({ className: '', iconSize: [16, 16], iconAnchor: [8, 8], html: `<div class="arr" style="color:${color};transform:rotate(${bearing(A, B)}deg)">▲</div>` }), interactive: false, keyboard: false }).addTo(target);
 }
@@ -178,7 +223,7 @@ function spreadPins(m, group, items) {
     });
     clusters.forEach(c => c.forEach((i, k) => {
       let dx = 0, dy = 0;
-      if (c.length > 1) { const ang = (k / c.length) * 2 * Math.PI - Math.PI / 2; dx = Math.cos(ang) * 18; dy = Math.sin(ang) * 18; }
+      if (c.length > 1) { const ang = (k / c.length) * 2 * Math.PI - Math.PI / 2, R = Math.max(18, c.length * 30 / (2 * Math.PI)); dx = Math.cos(ang) * R; dy = Math.sin(ang) * R; }
       const it = items[i];
       const icon = L.divIcon({ className: '', iconSize: [28, 28], iconAnchor: [14 - dx, 14 - dy], html: `<div class="pin ${it.cls || ''}" ${it.color ? `style="--pc:${it.color}"` : ''}>${it.label}</div>` });
       const mk = L.marker([it.lat, it.lng], { icon }).bindTooltip(it.tip).addTo(group);
@@ -192,6 +237,7 @@ function spreadPins(m, group, items) {
 function drawDayMap(el, stops, color) {
   const m = L.map(el, { scrollWheelZoom: false, dragging: !L.Browser.mobile });
   baseTiles(m);
+  addFullscreen(m);
   const items = drawDayRoute(m, stops, color);
   const pts = stops.map(s => [s.lat, s.lng]);
   const group = L.layerGroup().addTo(m);
@@ -244,7 +290,7 @@ function renderOverview() {
   const catRows = Object.entries(cats).sort((a, b) => b[1] - a[1]), sub = Object.values(cats).reduce((a, b) => a + b, 0);
   const R = 26, CIRC = 2 * Math.PI * R;
   $('#tab-plan').innerHTML = `<div class="hero"><p class="eyebrow">16–20 ธ.ค. 2569 · 2 คน</p><h1>ไต้หวัน<br>5 วัน 4 คืน</h1><p class="sub">ไม่เช่ารถ ใช้ HSR บัส และ MRT</p>
-      <p class="cta"><button class="more" data-day="D1">ดูแผนรายวัน</button><button class="more" data-places="plan">ดูสถานที่ในแผน</button><button class="more" data-goto="transport">ดูตั๋วและการเดินทาง</button><button class="more" data-goto="cost">ดูงบ</button></p></div>
+      <p class="cta"><button class="more" data-day="D1">ดูแผนรายวัน</button><button class="more" data-places="plan">ดูสถานที่ในแผน</button><button class="more" data-foods="plan">ดูร้านอาหาร</button><button class="more" data-hotels="plan">ดูที่พัก</button><button class="more" data-goto="transport">ดูตั๋วและการเดินทาง</button><button class="more" data-goto="cost">ดูงบ</button></p></div>
     ${subTabs('all')}
     <div class="bento">
       <div class="w"><div class="wl">นับถอยหลัง</div><div class="wn">${dl.n}<small>วัน</small></div><div class="wd">${dl.l}</div></div>
@@ -258,7 +304,7 @@ function renderOverview() {
         <div class="wrow"><span>16 ธ.ค.</span><b>อาลีซาน</b></div>
         <div class="wrow"><span>17 ธ.ค.</span><b>SML อีต้าเส้า</b></div>
         <div class="wrow"><span>18–19 ธ.ค.</span><b>ไทเป ซีเหมินติง</b></div>
-        <div class="wd">ยังไม่ได้จอง · ดูตัวเลือกและราคาในหน้ารายวัน</div></div>
+        <div class="wd">ยังไม่ได้จอง · ดูตัวเลือกและราคาในหน้ารายวัน</div><button class="more" data-hotels="plan" style="font-size:15px;margin-top:8px">ดูตัวเลือกที่พัก</button></div>
       <div class="w"><div class="wl">เตรียมตัว</div>
         <div class="hrow" style="margin-top:8px"><svg class="ring" viewBox="0 0 64 64"><circle cx="32" cy="32" r="${R}" fill="none" stroke="var(--line)" stroke-width="7"/><circle cx="32" cy="32" r="${R}" fill="none" stroke="var(--btn)" stroke-width="7" stroke-linecap="round" stroke-dasharray="${CIRC}" stroke-dashoffset="${CIRC * (1 - nd / all.length)}" transform="rotate(-90 32 32)"/></svg><div class="wn" style="margin:0;font-size:30px">${nd}/${all.length}</div></div>
         <div class="wd">ข้อที่ทำแล้ว</div></div>
@@ -276,6 +322,7 @@ function renderOverview() {
   const el = $('#ovmap'); if (!el) return;
   const m = L.map(el, { scrollWheelZoom: false, dragging: !L.Browser.mobile });
   baseTiles(m);
+  addFullscreen(m);
   const { pts, items } = drawOverviewRoute(m);
   const group = L.layerGroup().addTo(m);
   miniMap = m;
@@ -286,7 +333,7 @@ function hotelBlock(hk, dayId) {
   return `<div class="small"><b style="color:var(--ink)">${esc(h.title)}</b>${(dayId === 'D4' || dayId === 'D5') ? ' · ที่พักเดียวกับคืนที่แล้ว' : ''}</div>
     <p class="plain" style="margin:6px 0 16px;font-size:15.5px">${esc(h.why)}</p>
     ${h.picks.map((p, k) => `<div class="item"><b>${k + 1}. ${esc(p.n)}</b><div class="small">${esc(p.d)}</div><div class="price">ราคา: ${esc(p.price)}</div><div class="small"><a href="${gmSearch(p.q)}" target="_blank" rel="noopener">ดูในแผนที่</a></div></div>`).join('')}
-    <p class="note">คัดจากเว็บจองห้องและรีวิว ไม่ใช่การจัดอันดับทางการ ราคาเป็นตัวอย่างคนละวัน ไม่ใช่ราคาวันที่ไป ต้องกรอกวันที่เช็คเอง · <a href="${gmSearch(l.q)}" target="_blank" rel="noopener">ดูย่านนี้ในแผนที่</a></p>`;
+    <p class="note">คัดจากเว็บจองห้องและรีวิว ไม่ใช่การจัดอันดับทางการ ราคาเป็นตัวอย่างคนละวัน ไม่ใช่ราคาวันที่ไป ต้องกรอกวันที่เช็คเอง · <a href="${gmSearch(l.q)}" target="_blank" rel="noopener">ดูย่านนี้ในแผนที่</a></p><button class="more" data-hotels="${hk}" style="font-size:16px;margin-top:10px">ดูตัวเลือกทั้งหมดในแท็บที่พัก</button>`;
 }
 function computeSteps(d) {
   const info = DAY_INFO[d.day];
@@ -311,14 +358,16 @@ function renderDay() {
   const status = left < 0 ? 'แน่นเกิน' : left < 1.5 ? 'ตึง' : 'โอเค';
   const costs = dayCosts(d.day), ctot = costs.reduce((s, r) => s + r.v, 0);
   const dayTr = TRANSPORT.filter(x => x.d === d.day);
+  const dayFoods = FOODS.filter(x => x.day === d.day);
   const { steps, stops } = computeSteps(d);
   const main = `
     ${blk('ตารางเวลา', tile(steps.map(s => `<div class="sr k-${s.k}"><div class="st">${esc(s.t)}</div><div><div class="stt">${esc(s.title)}</div>${s.d ? `<div class="sd">${esc(s.d)}</div>` : ''}
-      ${(s.dur || s.cost || s.l) ? `<div class="meta">${[s.dur ? esc(s.dur) : '', s.cost ? esc(s.cost) : '', s.l ? `<a href="${gmSearch(s.l.q)}" target="_blank" rel="noopener">แผนที่ ${s.n}</a>` : '', s.l && s.from ? `<a href="${gmDir(s.from.q, s.l.q)}" target="_blank" rel="noopener">เส้นทางจากจุดก่อนหน้า</a>` : ''].filter(Boolean).join('<i>·</i>')}</div>` : ''}
+      ${(s.dur || s.cost || s.l || (s.k === 'eat' && dayFoods.length)) ? `<div class="meta">${[s.dur ? esc(s.dur) : '', s.cost ? esc(s.cost) : '', s.k === 'eat' && dayFoods.length ? `<button class="lnk" data-foods="${d.day}">ดูร้านแนะนำ</button>` : '', s.l ? `<a href="${gmSearch(s.l.q)}" target="_blank" rel="noopener">แผนที่ ${s.n}</a>` : '', s.l && s.from ? `<a href="${gmDir(s.from.q, s.l.q)}" target="_blank" rel="noopener">เส้นทางจากจุดก่อนหน้า</a>` : ''].filter(Boolean).join('<i>·</i>')}</div>` : ''}
       ${s.tip ? `<div class="tip">${esc(s.tip)}</div>` : ''}</div></div>`).join('') + `<p class="note">${esc(d.note)} · เวลาทั้งหมดเป็นค่าประมาณ</p>`))}
     ${blk('ที่พักแนะนำ', tile(hotelBlock(HOTEL_FOR_DAY[d.day], d.day)))}
     ${info.book.length ? blk('ต้องจองหรือซื้อ', tile(info.book.map(b => `<div class="item"><b>${esc(b.t)}</b><span class="due">${esc(b.due)}</span><div class="small">${esc(b.d)}</div></div>`).join('') + '<button class="more" data-goto="todo" style="margin-top:14px;font-size:16px">เปิดรายการเตรียมตัว</button>')) : ''}
     ${places.length ? blk('สถานที่', `<div class="strip">${places.map(p => photo(p)).join('')}</div><button class="more" data-places="${d.day}" style="margin-top:12px;font-size:16px">ดูในแท็บสถานที่</button>`) : ''}
+    ${dayFoods.length ? blk('ร้านอาหารแนะนำวันนี้', tile(dayFoods.map(x => `<button class="item trlink" data-foods="${d.day}"><b>${esc(x.n)}</b> <span class="small">· ${esc(x.meal)}</span><div class="small">${esc(x.dish)} ${stTag(x.s)}</div></button>`).join('') + `<button class="more" data-foods="${d.day}" style="margin-top:12px;font-size:16px">ดูทั้งหมดในแท็บร้านอาหาร</button>`), 'ร้านที่เลือกให้เข้ากับเส้นทางและช่วงเวลาของวัน · เช็คเวลาเปิดก่อนไป') : ''}
     ${dayTr.length ? blk('ตั๋วและวิธีซื้อ', tile(dayTr.map((x, k) => { const r = x.rows.find(rw => /ราคา/.test(rw[0])) || x.rows[0]; return `<button class="item trlink" data-tr="${d.day}-${k}"><b>${esc(x.t)}</b><div class="small">${esc(r[0])}: ${esc(r[1].length > 90 ? r[1].slice(0, 90) + '…' : r[1])} ${stTag(r[2])}</div><span class="go2">ดูวิธีซื้อและราคา</span></button>`; }).join('') + '<p class="note">กดเพื่อไปแท็บเดินทาง · ข้อมูลส่วนใหญ่ยังไม่ยืนยันกับหน้าทางการ ดูป้ายสถานะ</p>'), 'ซื้อที่ไหน ราคา และตารางเวลาของแต่ละช่วงวันนี้') : ''}
     ${blk('การเดินทาง', tile(legs.map(l => `<div class="item"><div style="display:flex;justify-content:space-between;gap:12px"><b>${esc(l.frm)} → ${esc(l.to)}</b><span class="small" style="white-space:nowrap">${l.min >= 60 ? fmtH(l.min / 60) + ' ชม.' : l.min + ' น.'}</span></div><div class="small">${esc(l.mode)}${l.km ? ` · ${l.km} กม.` : ''}${l.note ? ` · ${esc(l.note)}` : ''}</div></div>`).join('')))}`;
   const aside = `
@@ -351,6 +400,7 @@ function initMap() {
   if (map) return;
   map = L.map('map').setView([24.3, 121.1], 8);
   baseTiles(map);
+  addFullscreen(map);
   layer = L.layerGroup().addTo(map);
   pins = L.layerGroup().addTo(map);
   const opts = [['plan', 'ทั้งทริป'], ...DAYS.map(d => [d.day, d.day]), ['all', 'ทุกสถานที่']];
@@ -381,10 +431,67 @@ function drawMap() {
 }
 
 /* ---------- places ---------- */
+/* ---------- maps inside tabs ---------- */
+const TM = {}, TMITEMS = {};
+const mapBlock = key => `<div class="tmwrap"><div id="tm-${key}" class="tm"></div><div id="ti-${key}" class="tinfo"><span class="small">กดรายการเพื่อดูตำแหน่งบนแผนที่</span></div></div>`;
+function ensureTabMap(key) {
+  const el = document.getElementById('tm-' + key);
+  if (!el) return null;
+  let s = TM[key];
+  if (s && s.el === el) return s;
+  if (s) s.map.remove();
+  const m = L.map(el, { scrollWheelZoom: false, dragging: !L.Browser.mobile });
+  baseTiles(m); addFullscreen(m);
+  s = TM[key] = { el, map: m, lines: L.layerGroup().addTo(m), pins: L.layerGroup().addTo(m), sel: null };
+  return s;
+}
+function refreshTabMap(key, fit = true) {
+  const s = ensureTabMap(key);
+  if (!s || !s.el.offsetParent || !TMITEMS[key]) return;
+  const { items, lines } = TMITEMS[key](s.sel);
+  s.lines.clearLayers();
+  (lines || []).forEach(l => addLeg(s.lines, l.a, l.b, l.color, 0, l.w, l.op));
+  s.items = items;
+  s.map.invalidateSize();
+  const pts = items.map(i => [i.lat, i.lng]);
+  if (fit && pts.length) s.map.fitBounds(pts, { padding: [36, 36], maxZoom: 14 });
+  else if (!pts.length) s.map.setView([24.3, 121.1], 8);
+  spreadPins(s.map, s.pins, items.map(i => ({ ...i, cls: (i.id === s.sel ? 'sel ' : '') + (i.cls || ''), tip: i.name, click: () => pickItem(key, i.id, 'pin') })));
+}
+function infoHtml(it) {
+  return `<div class="ti"><div class="tit"><b>${esc(it.name)}</b><div class="small">${esc(it.sub || '')}</div></div>
+    <div class="tbtn">${it.place ? `<button class="more" data-place="${esc(it.place)}">รายละเอียด</button>` : ''}<a href="${gmSearch(it.q)}" target="_blank" rel="noopener">Google Maps</a>${it.embed === false ? '' : `<button class="more" data-embed="${esc(it.q)}" data-ename="${esc(it.name)}">ตำแหน่งจริง</button>`}</div></div>
+    ${it.note ? `<div class="small tnote">${esc(it.note)}</div>` : ''}`;
+}
+function pickItem(key, id, source) {
+  const s = ensureTabMap(key);
+  if (!s) return;
+  if (!s.items) refreshTabMap(key, false);
+  const it = (s.items || []).find(x => x.id === id);
+  if (!it) return;
+  s.sel = id;
+  $('#ti-' + key).innerHTML = infoHtml(it);
+  $$(`#tab-${key} [data-pick]`).forEach(e => e.classList.toggle('sel', e.dataset.pick === id));
+  refreshTabMap(key, false);
+  if (it.bounds && it.bounds.length > 1) s.map.fitBounds(it.bounds, { padding: [40, 40], maxZoom: 12 });
+  else s.map.flyTo([it.lat, it.lng], Math.max(s.map.getZoom(), it.zoom || 13), { duration: .6 });
+  if (source === 'pin') document.querySelector(`#tab-${key} [data-pick="${id}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+function openEmbed(q, name) {
+  $('#sheetBox').innerHTML = `<button class="sheet-x" data-close aria-label="ปิด">✕</button>
+    <div class="sb" style="padding-top:22px"><h3>${esc(name)}</h3><p class="small" style="margin:6px 0 12px">แผนที่ของ Google ค้นด้วยชื่อ ถ้าไม่ขึ้นหรือขึ้นผิดที่ ให้เปิดใน Google Maps แล้วดูที่อยู่และรีวิวยืนยันอีกครั้ง</p></div>
+    <iframe class="embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://maps.google.com/maps?q=${encodeURIComponent(q)}&output=embed&hl=th"></iframe>
+    <div class="sb"><div class="links"><a href="${gmSearch(q)}" target="_blank" rel="noopener">เปิดใน Google Maps</a></div></div>`;
+  $('#sheet').hidden = false;
+}
+const foodAnchor = f => ({ 'เจียอี้': 'CHIAYI_STN', 'อาลีซาน': 'E1', 'SML': /สุ่ยเซอ/.test(f.n) ? 'SHUISHE' : 'HOTEL_SML', 'อูไหล': 'B1', 'จีหลง': 'C1', 'จิ่วเฟิ่น': 'D1', 'ไทเป': /Raohe|เหราเหอ/.test(f.n) ? 'RAOHE' : /Shilin|ซื่อหลิน/.test(f.n) ? 'SHILIN' : 'HOTEL_TPE' }[f.z]);
+const hotelAnchor = h => h.z === 'อาลีซาน' ? 'HOTEL_ALI' : h.z === 'อาลีซาน (นอกอุทยาน)' ? (['e5', 'e6'].includes(h.id) ? 'FANLU' : 'FENQIHU') : h.z === 'SML' ? (h.tags.includes('pier') ? 'HOTEL_SML' : 'SML_CENTER') : h.z === 'เจียอี้' ? 'CHIAYI_STN' : 'HOTEL_TPE';
+const AREA_NOTE = 'หมุดอยู่ที่ย่านนี้ ไม่ใช่ที่อยู่จริงของร้าน/โรงแรม · กด “ตำแหน่งจริง” หรือ Google Maps เพื่อดูจุดที่แน่ชัด';
+
 const F = { q: '', g: 'all', d: 'all', s: 'all', c: 'all' };
 const placeCard = p => {
   const src = img(p), dc = p.day ? dayColor(p.day) : '';
-  return `<button class="ph ${p.day ? 'in' : ''}" data-place="${p.code}" ${p.day ? `style="--dc:${dc}"` : ''}><div class="pw">${src ? `<img src="${esc(src)}" alt="" loading="lazy">` : '<div class="noimg">ยังไม่มีรูป</div>'}${p.day ? `<span class="pb">ในแผน · ${p.day}</span>` : ''}</div><div class="n">${esc(p.name)}</div><div class="s">${esc(GROUP_SHORT[gk(p)])} · ${esc(p.hours)} ชม.</div><div class="tg">${tagsOf(p).slice(0, 3).map(x => `<span>${esc(x)}</span>`).join('')}</div></button>`;
+  return `<button class="ph ${p.day ? 'in' : ''}" data-pick="${p.code}" ${p.day ? `style="--dc:${dc}"` : ''}><div class="pw"><span class="cn">${p.code}</span>${src ? `<img src="${esc(src)}" alt="" loading="lazy">` : '<div class="noimg">ยังไม่มีรูป</div>'}${p.day ? `<span class="pb">ในแผน · ${p.day}</span>` : ''}</div><div class="n">${esc(p.name)}</div><div class="s">${esc(GROUP_SHORT[gk(p)])} · ${esc(p.hours)} ชม.</div><div class="tg">${tagsOf(p).slice(0, 3).map(x => `<span>${esc(x)}</span>`).join('')}</div></button>`;
 };
 function renderPlaces() {
   const nPlan = P.filter(p => p.day).length;
@@ -394,6 +501,7 @@ function renderPlaces() {
       <select id="fd"><option value="all">ทุกวัน</option>${DAYS.map(d => `<option value="${d.day}" ${F.d === d.day ? 'selected' : ''}>${d.day}</option>`).join('')}</select></div>
     <div style="margin-top:14px"><div class="seg" id="scope">${[['all', 'ทั้งหมด'], ['plan', `ในแผน (${nPlan})`], ['none', `ยังไม่วาง (${P.length - nPlan})`]].map(([v, tx]) => `<button class="${F.s === v ? 'on' : ''}" data-s="${v}">${tx}</button>`).join('')}</div></div>
     <div class="cats" id="cats"><button class="fchip ${F.c === 'all' ? 'on' : ''}" data-c="all">ทุกประเภท</button>${CATS.map(c => `<button class="fchip ${F.c === c[0] ? 'on' : ''}" data-c="${c[0]}">${c[1]} <small>${P.filter(p => inCat(p, c)).length}</small></button>`).join('')}</div>
+    ${mapBlock('places')}
     <div id="pout"></div>`;
   const draw = () => {
     const q = F.q.trim().toLowerCase(), cat = CATS.find(c => c[0] === F.c);
@@ -401,6 +509,8 @@ function renderPlaces() {
     const plan = list.filter(p => p.day).sort((a, b) => a.day.localeCompare(b.day)), other = list.filter(p => !p.day);
     const sec = (title, arr) => arr.length ? `<h3 class="gh">${title} <span>${arr.length}</span></h3><div class="grid">${arr.map(placeCard).join('')}</div>` : '';
     $('#pout').innerHTML = (sec('ในแผนของเรา', plan) + sec(plan.length ? 'ตัวเลือกเพิ่มเติม' : 'สถานที่', other)) || '<p class="plain" style="margin-top:24px">ไม่มีสถานที่ตรงกับตัวกรอง</p>';
+    TMITEMS.places = () => ({ items: list.map(p => ({ id: p.code, lat: p.lat, lng: p.lng, label: p.code, color: p.day ? dayColor(p.day) : '#8a949b', cls: p.day ? '' : 's', name: p.name, sub: `${p.code} · ${GROUP_SHORT[gk(p)]}${p.day ? ' · ในแผน ' + p.day : ''}`, q: p.search + ' Taiwan', place: p.code, embed: false, note: 'ตำแหน่งหมุดโดยประมาณ' })) });
+    refreshTabMap('places', true);
   };
   draw();
   $('#q').oninput = e => { F.q = e.target.value; draw(); };
@@ -413,15 +523,118 @@ function renderPlaces() {
 /* ---------- transport ---------- */
 const stTag = s => `<span class="stt2 st-${STATUS[s][1]}">${STATUS[s][0]}</span>`;
 const srcLinks = arr => (arr || []).map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(n)}</a>`).join(' · ');
+const TR_ROUTES = [['TPE', 'HSR_TY'], ['HSR_TY', 'HSR_CY'], ['HSR_CY', 'ALI_STN'], ['ALI_STN'], ['ALI_STN', 'E2'], ['ALI_STN', 'SHUISHE'], ['SHUISHE', 'F1'], ['SHUISHE', 'HSR_TC'], ['HSR_TC', 'TPE_MAIN'], ['TPE_MAIN', 'XINDIAN', 'B1'], ['TPE_MAIN', 'KEELUNG_STN', 'D1'], ['TPE_MAIN', 'TPE']];
+if (TR_ROUTES.length !== TRANSPORT.length) console.warn('TR_ROUTES length mismatch');
+TMITEMS.transport = sel => {
+  const items = [], lines = [];
+  TRANSPORT.forEach((x, i) => {
+    const pts = (TR_ROUTES[i] || []).map(resolveLoc).filter(Boolean);
+    if (!pts.length) return;
+    const a = pts[0], b = pts[pts.length - 1], mid = pts.length > 1 ? { lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 } : a;
+    const on = sel === 't' + i;
+    items.push({ id: 't' + i, lat: mid.lat, lng: mid.lng, label: i + 1, color: dayColor(x.d), name: x.t, sub: `${x.d} · ${pts.map(p => p.name).join(' → ')}`, q: b.q, bounds: pts.map(p => [p.lat, p.lng]), embed: false, note: 'เส้นตรงเชื่อมจุดคร่าว ๆ ไม่ใช่เส้นทางจริง · ราคาและวิธีซื้อดูในการ์ดของช่วงนี้' });
+    for (let k = 1; k < pts.length; k++) lines.push({ a: pts[k - 1], b: pts[k], color: dayColor(x.d), w: on ? 7 : 3.5, op: sel && !on ? .45 : .9 });
+  });
+  return { items, lines };
+};
 function renderTransport() {
   const dayOf = d => DAYS.find(x => x.day === d);
   $('#tab-transport').innerHTML = `<div class="hero" style="text-align:left;padding:40px 0 0"><p class="eyebrow">ตั๋วและวิธีเดินทาง</p><h1>เดินทาง</h1><p class="sub">ซื้อที่ไหน ราคาเท่าไร เมื่อไรต้องจอง · แยกว่าอะไรยืนยันแล้ว อะไรยังไม่ยืนยัน</p></div>
+    ${mapBlock('transport')}
     ${blk('อ่านก่อน', tile(`<p>ข้อมูลทั้งหมดค้นจากเว็บเมื่อ 22 พ.ย. 2569 <b>เครื่องที่ใช้ค้นเปิดหน้าเว็บทางการโดยตรงไม่ได้</b> จึงยืนยันได้แค่ข้อความที่เห็นในผลค้นหา แต่ละข้อมีป้ายสถานะ:</p>
       <div class="stlegend"><div>${stTag('off')} <span>ข้อความจากหน้าเว็บทางการที่เห็นในผลค้นหา (ยังไม่ได้เปิดอ่านหน้าเอง)</span></div><div>${stTag('sec')} <span>บล็อก ไกด์ หรือเว็บขายตั๋ว ตัวเลขอาจเก่าหรือไม่ตรงกัน</span></div><div>${stTag('no')} <span>ไม่พบข้อมูลที่เชื่อถือได้ ต้องเช็คเอง ผมไม่ได้เดา</span></div></div>
       <p class="note">ก่อนซื้อจริง ให้เปิดเว็บทางการเช็คราคาและเวลาอีกครั้ง: ${Object.values(LINKS).map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(n)}</a>`).join(' · ')}</p>`))}
     ${blk('ซื้อ/จองเมื่อไร', tile(WHEN.map(([k, v]) => `<div class="item"><b>${esc(k)}</b><div class="small" style="color:var(--ink)">${esc(v)}</div></div>`).join('')))}
     ${blk('แพ็กเกจและบัสที่เหมาะกับเรา', `<div class="stack">${PACKS.map(p => `<div class="tile"><div class="phead"><b>${esc(p.t)}</b><span class="verdict">${esc(p.v)}</span></div><p style="margin-top:8px;font-size:15.5px">${esc(p.body)}</p><p class="small" style="margin-top:8px">${srcLinks(p.src)}</p></div>`).join('')}</div>`, 'ส่วนนี้เป็นความเห็นของผมจากข้อมูลด้านล่าง ไม่ใช่ข้อมูลทางการ')}
-    ${DAYS.map(d => { const items = TRANSPORT.filter(x => x.d === d.day); return items.length ? blk(`${d.day} · ${esc(dayLabel(d))}`, `<div class="stack">${items.map((x, k) => `<div class="tile" id="tr-${d.day}-${k}"><div class="phead"><b>${esc(x.t)}</b></div>${x.rows.map(([lb, tx, s, src]) => `<div class="trow"><div class="tl2">${esc(lb)}</div><div class="tx">${esc(tx)} ${stTag(s)}${src && src.length ? `<div class="small" style="margin-top:4px">ดูเพิ่ม: ${srcLinks(src)}</div>` : ''}</div></div>`).join('')}</div>`).join('')}</div>`).replace('<div class="blk">', `<div class="blk" id="tr-${d.day}">`) : ''; }).join('')}`;
+    ${DAYS.map(d => { const items = TRANSPORT.filter(x => x.d === d.day); return items.length ? blk(`${d.day} · ${esc(dayLabel(d))}`, `<div class="stack">${items.map((x, k) => `<div class="tile pickable" id="tr-${d.day}-${k}" data-pick="t${TRANSPORT.indexOf(x)}"><div class="phead"><b><span class="cn2">${TRANSPORT.indexOf(x) + 1}</span>${esc(x.t)}</b></div>${x.rows.map(([lb, tx, s, src]) => `<div class="trow"><div class="tl2">${esc(lb)}</div><div class="tx">${esc(tx)} ${stTag(s)}${src && src.length ? `<div class="small" style="margin-top:4px">ดูเพิ่ม: ${srcLinks(src)}</div>` : ''}</div></div>`).join('')}</div>`).join('')}</div>`).replace('<div class="blk">', `<div class="blk" id="tr-${d.day}">`) : ''; }).join('')}`;
+  refreshTabMap('transport', true);
+}
+
+/* ---------- food ---------- */
+const FF = { q: '', z: 'all', d: 'all', s: 'all', c: 'all' };
+const ftName = k => (FTYPES.find(x => x[0] === k) || [k, k])[1];
+const foodCard = (f, n) => `<div class="fd ${f.day ? 'in' : ''}" data-pick="${f.id}" ${f.day ? `style="--dc:${dayColor(f.day)}"` : ''}><span class="cn">${n}</span>
+  ${f.day ? `<span class="pb2">ในแผน · ${f.day} · ${esc(f.meal)}</span>` : ''}
+  <div class="fn">${esc(f.n)}</div>
+  <div class="fz">${esc(f.z)}</div>
+  <div class="fdish">${esc(f.dish)}</div>
+  <div class="tg">${f.tags.map(k => `<span>${esc(ftName(k))}</span>`).join('')}</div>
+  <p class="fnote">${esc(f.note)}</p>
+  <div class="fmeta">${stTag(f.s)}<a href="${gmSearch(f.q + ' Taiwan')}" target="_blank" rel="noopener">แผนที่</a>${f.src.map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(n)}</a>`).join('')}</div>
+</div>`;
+function renderFood() {
+  const nPlan = FOODS.filter(f => f.day).length;
+  $('#tab-food').innerHTML = `<div class="hero" style="text-align:left;padding:40px 0 0"><p class="eyebrow">ร้านอาหารและของกิน</p><h1>ร้านอาหาร</h1><p class="sub">${FOODS.length} รายการ · <span style="color:var(--ink)">ในแผนของเรา ${nPlan} รายการ</span></p></div>
+    <p class="note">คัดจากบล็อก ไกด์ และรีวิวที่ค้นเจอ ไม่ใช่การจัดอันดับทางการ <b>ไม่มีเวลาเปิด-ปิดหรือราคาที่ยืนยันแล้ว</b> ร้านเปลี่ยนบ่อย เช็คแผนที่/รีวิวล่าสุดก่อนไป ป้ายสถานะ: ${stTag('sec')} มีแหล่งรองสนับสนุน ${stTag('no')} ข้อมูลขัดแย้งหรือไม่ชัด</p>
+    <div class="filters" style="margin-top:18px"><input id="fq" placeholder="ค้นหา เช่น ข้าวไก่งวง หมูป่า ไอศกรีม" value="${esc(FF.q)}">
+      <select id="fz"><option value="all">ทุกโซน</option>${FZONES.map(z => `<option value="${z}" ${FF.z === z ? 'selected' : ''}>${z}</option>`).join('')}</select>
+      <select id="fdd"><option value="all">ทุกวัน</option>${DAYS.map(d => `<option value="${d.day}" ${FF.d === d.day ? 'selected' : ''}>${d.day}</option>`).join('')}</select></div>
+    <div style="margin-top:14px"><div class="seg" id="fscope">${[['all', 'ทั้งหมด'], ['plan', `ในแผน (${nPlan})`], ['none', `ตัวเลือกเพิ่ม (${FOODS.length - nPlan})`]].map(([v, tx]) => `<button class="${FF.s === v ? 'on' : ''}" data-s="${v}">${tx}</button>`).join('')}</div></div>
+    <div class="cats" id="fcats"><button class="fchip ${FF.c === 'all' ? 'on' : ''}" data-c="all">ทุกประเภท</button>${FTYPES.map(([k, n]) => `<button class="fchip ${FF.c === k ? 'on' : ''}" data-c="${k}">${n} <small>${FOODS.filter(f => f.tags.includes(k)).length}</small></button>`).join('')}</div>
+    ${mapBlock('food')}
+    <div id="fout"></div>`;
+  const draw = () => {
+    const q = FF.q.trim().toLowerCase();
+    const list = FOODS.filter(f => (FF.z === 'all' || f.z === FF.z) && (FF.d === 'all' || f.day === FF.d) && (FF.s === 'all' || (FF.s === 'plan' ? f.day : !f.day)) && (FF.c === 'all' || f.tags.includes(FF.c)) && (!q || (f.n + ' ' + f.dish + ' ' + f.note + ' ' + f.z).toLowerCase().includes(q)));
+    const mealOrder = { 'เช้า': 0, 'กลางวัน': 1, 'เย็น': 2 };
+    const plan = list.filter(f => f.day).sort((a, b) => a.day.localeCompare(b.day) || (mealOrder[a.meal] ?? 9) - (mealOrder[b.meal] ?? 9)), other = list.filter(f => !f.day);
+    const FN = new Map([...plan, ...other].map((f, i) => [f.id, i + 1]));
+    const sec = (title, arr) => arr.length ? `<h3 class="gh">${title} <span>${arr.length}</span></h3><div class="fgrid">${arr.map(f => foodCard(f, FN.get(f.id))).join('')}</div>` : '';
+    $('#fout').innerHTML = (sec('ในแผนของเรา', plan) + sec(plan.length ? 'ตัวเลือกเพิ่มเติม' : 'ร้านอาหาร', other)) || '<p class="plain" style="margin-top:24px">ไม่มีรายการตรงกับตัวกรอง</p>';
+    TMITEMS.food = () => ({ items: [...plan, ...other].map(f => { const a = resolveLoc(foodAnchor(f)); return { id: f.id, lat: a.lat, lng: a.lng, label: FN.get(f.id), color: f.day ? dayColor(f.day) : '#8a949b', name: f.n, sub: `${f.z}${f.day ? ' · ในแผน ' + f.day + ' · ' + f.meal : ''}`, q: f.q + ' Taiwan', note: AREA_NOTE }; }) });
+    refreshTabMap('food', true);
+  };
+  draw();
+  $('#fq').oninput = e => { FF.q = e.target.value; draw(); };
+  $('#fz').onchange = e => { FF.z = e.target.value; draw(); };
+  $('#fdd').onchange = e => { FF.d = e.target.value; draw(); };
+  $$('#fscope button').forEach(b => b.onclick = () => { FF.s = b.dataset.s; renderFood(); });
+  $$('#fcats button').forEach(b => b.onclick = () => { FF.c = b.dataset.c; renderFood(); });
+}
+
+/* ---------- hotels ---------- */
+const HF = { q: '', z: 'all', s: 'all', c: 'all', o: 'default' };
+const htName = k => (HTYPES.find(x => x[0] === k) || [k, k])[1];
+const hotelCard = (h, n) => `<div class="fd ${h.plan ? 'in' : ''}" data-pick="${h.id}" ${h.plan ? `style="--dc:${dayColor(h.plan.day)}"` : ''}><span class="cn">${n}</span>
+  ${h.plan ? `<span class="pb2">ในแผน · ${esc(h.plan.night)}${h.plan.main ? ' · ตัวเลือกหลัก' : ''}</span>` : ''}
+  <div class="fn">${esc(h.n)}</div>
+  <div class="fz">${esc(h.z)}${h.rating ? ` · คะแนน ${h.rating}/10` : ''}</div>
+  <div class="fdish hprice">${esc(h.price)}</div>
+  ${h.tags.length ? `<div class="tg">${h.tags.map(k => `<span>${esc(htName(k))}</span>`).join('')}</div>` : ''}
+  <p class="fnote">${esc(h.d)}</p>
+  <div class="fmeta">${stTag(h.s)}<a href="${gmSearch(h.q)}" target="_blank" rel="noopener">แผนที่</a>${(h.src || []).map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(n)}</a>`).join('')}</div>
+</div>`;
+function renderHotels() {
+  const nPlan = HOTEL_LIST.filter(h => h.plan).length;
+  const zOk = (h) => HF.z === 'all' || h.z === HF.z || (HF.z === 'อาลีซาน' && h.z.startsWith('อาลีซาน'));
+  $('#tab-hotels').innerHTML = `<div class="hero" style="text-align:left;padding:40px 0 0"><p class="eyebrow">ที่พัก 4 คืน</p><h1>ที่พัก</h1><p class="sub">${HOTEL_LIST.length} ตัวเลือก · <span style="color:var(--ink)">ในแผนของเรา ${nPlan} ตัวเลือก</span></p></div>
+    <p class="note">คัดจากเว็บจองห้องและรีวิวที่ค้นเจอ ไม่ใช่การจัดอันดับทางการ <b>ราคาเป็นตัวอย่างคนละวันและคนละสกุลเงิน ไม่ใช่ราคาวันที่ 16–19 ธ.ค. และยังไม่ทราบห้องว่าง</b> ต้องกรอกวันที่เช็คเองก่อนจอง ${stTag('sec')} มีราคา/คะแนนตัวอย่าง ${stTag('no')} ไม่พบราคา</p>
+    <div class="filters" style="margin-top:18px"><input id="hq" placeholder="ค้นหาชื่อที่พัก" value="${esc(HF.q)}">
+      <select id="hz"><option value="all">ทุกโซน</option>${HZONES.map(z => `<option value="${z}" ${HF.z === z ? 'selected' : ''}>${z}</option>`).join('')}</select>
+      <select id="ho"><option value="default" ${HF.o === 'default' ? 'selected' : ''}>เรียงตามแผน</option><option value="price" ${HF.o === 'price' ? 'selected' : ''}>ราคาต่ำ → สูง</option><option value="rating" ${HF.o === 'rating' ? 'selected' : ''}>คะแนนสูง → ต่ำ</option></select></div>
+    <div style="margin-top:14px"><div class="seg" id="hscope">${[['all', 'ทั้งหมด'], ['plan', `ในแผน (${nPlan})`], ['none', `ตัวเลือกเพิ่ม (${HOTEL_LIST.length - nPlan})`]].map(([v, tx]) => `<button class="${HF.s === v ? 'on' : ''}" data-s="${v}">${tx}</button>`).join('')}</div></div>
+    <div class="cats" id="hcats"><button class="fchip ${HF.c === 'all' ? 'on' : ''}" data-c="all">ทุกประเภท</button>${HTYPES.map(([k, n]) => `<button class="fchip ${HF.c === k ? 'on' : ''}" data-c="${k}">${n} <small>${HOTEL_LIST.filter(h => h.tags.includes(k)).length}</small></button>`).join('')}</div>
+    ${mapBlock('hotels')}
+    <div id="hout"></div>`;
+  const draw = () => {
+    const q = HF.q.trim().toLowerCase();
+    let list = HOTEL_LIST.filter(h => zOk(h) && (HF.s === 'all' || (HF.s === 'plan' ? h.plan : !h.plan)) && (HF.c === 'all' || h.tags.includes(HF.c)) && (!q || (h.n + ' ' + h.d).toLowerCase().includes(q)));
+    const sorter = HF.o === 'price' ? (a, b) => (a.usd ?? 1e9) - (b.usd ?? 1e9) : HF.o === 'rating' ? (a, b) => (b.rating ?? -1) - (a.rating ?? -1) : null;
+    const plan = list.filter(h => h.plan), other = list.filter(h => !h.plan);
+    if (sorter) { plan.sort(sorter); other.sort(sorter); }
+    else other.sort((a, b) => HZONES.indexOf(a.z) - HZONES.indexOf(b.z));
+    const HN = new Map([...plan, ...other].map((h, i) => [h.id, i + 1]));
+    const sec = (title, arr) => arr.length ? `<h3 class="gh">${title} <span>${arr.length}</span></h3><div class="fgrid">${arr.map(h => hotelCard(h, HN.get(h.id))).join('')}</div>` : '';
+    $('#hout').innerHTML = (sec('ในแผนของเรา', plan) + sec(plan.length ? 'ตัวเลือกเพิ่มเติม' : 'ที่พัก', other)) || '<p class="plain" style="margin-top:24px">ไม่มีรายการตรงกับตัวกรอง</p>';
+    TMITEMS.hotels = () => ({ items: [...plan, ...other].map(h => { const a = resolveLoc(hotelAnchor(h)); return { id: h.id, lat: a.lat, lng: a.lng, label: HN.get(h.id), color: h.plan ? dayColor(h.plan.day) : '#8a949b', name: h.n, sub: `${h.z}${h.plan ? ' · ในแผน ' + h.plan.night : ''}`, q: h.q + ' Taiwan', note: AREA_NOTE }; }) });
+    refreshTabMap('hotels', true);
+  };
+  draw();
+  $('#hq').oninput = e => { HF.q = e.target.value; draw(); };
+  $('#hz').onchange = e => { HF.z = e.target.value; draw(); };
+  $('#ho').onchange = e => { HF.o = e.target.value; draw(); };
+  $$('#hscope button').forEach(b => b.onclick = () => { HF.s = b.dataset.s; renderHotels(); });
+  $$('#hcats button').forEach(b => b.onclick = () => { HF.c = b.dataset.c; renderHotels(); });
 }
 
 /* ---------- cost ---------- */
@@ -478,6 +691,6 @@ function renderTodo() {
 
 /* ---------- boot ---------- */
 parseHash();
-renderPlaces(); renderTransport(); renderCost(); renderTodo();
+renderPlaces(); renderFood(); renderHotels(); renderTransport(); renderCost(); renderTodo();
 window.addEventListener('hashchange', () => { parseHash(); show(); });
 show();

@@ -22,33 +22,32 @@ export const LOCS = {
 export const HOTELS = {
   ali: {
     title: 'อาลีซาน · คืน 16 ธ.ค.', loc: 'HOTEL_ALI',
-    why: 'ต้องอยู่ใกล้สถานีรถไฟป่า เพราะรอบพระอาทิตย์ขึ้นออกตี 4–5 และห้องน้อยมาก',
+    why: 'ต้องพักใกล้สถานีรถไฟป่า เพราะรอบพระอาทิตย์ขึ้นออกตี 4–5 และห้องน้อยมาก ที่พักถูกกว่าแถวเฟิ่นฉีหู/ฟานลู่ (~US$40–110) อยู่ไกลจากสถานี ไม่เหมาะกับรอบตี 4 Hotel Indigo Alishan (IHG) ก็อยู่ที่ฟานลู่ ไม่ได้อยู่ในอุทยาน',
     picks: [
-      { n: 'Alishan Hotel', tag: 'แนะนำอันดับ 1', d: 'รีวิวบอกมีรถรับส่งและบริการปลุกสำหรับรถไฟพระอาทิตย์ขึ้น มีอาหารเช้า/ร้านอาหาร ห่างจุดชมวิวจู้ซาน ~1.5 กม. (ตามเว็บจอง)', q: 'Alishan Hotel Alishan Taiwan' },
-      { n: 'Alishan Gou Hotel', tag: 'ใกล้สถานี', d: 'รีวิวบอกใกล้สถานีรถไฟป่า ติดตารางรถไฟพระอาทิตย์ขึ้นและเวลาตะวันขึ้นไว้ที่ล็อบบี้', q: 'Alishan Gou Hotel' },
-      { n: 'Hotel Indigo Alishan (IHG)', tag: 'ระดับสูงกว่า', d: 'คะแนนรีวิวสูง อยู่ในพื้นที่กว้างกว่า เช็คระยะถึงสถานีรถไฟป่าก่อนจอง', q: 'Hotel Indigo Alishan' },
+      { n: 'Alishan Gou Hotel', d: 'ตัวเลือกประหยัดกว่า 2 ดาว 86 ห้อง ที่อยู่ Xianglin Village รีวิวบอกใกล้สถานีรถไฟป่าและติดตารางรถไฟพระอาทิตย์ขึ้นไว้ที่ล็อบบี้', price: 'ไม่พบราคาที่เชื่อถือได้ ต้องกรอกวันที่ในเว็บจอง (รีวิวหนึ่งบอกบางวันถูกมาก)', q: 'Alishan Gou Hotel' },
+      { n: 'Alishan Hotel (Alishan House)', d: '4 ดาว รีวิวบอกมีรถรับส่งและบริการปลุกสำหรับรถไฟพระอาทิตย์ขึ้น มีอาหารเช้า/ร้านอาหาร ห่างจุดชมวิวจู้ซาน ~1.5 กม. (ตามเว็บจอง)', price: 'ตัวอย่างจากเว็บจอง ~US$385–750 ต่อคืน (ราว ฿13,000–25,000) สูงกว่างบที่ตั้งไว้มาก', q: 'Alishan Hotel Alishan Taiwan' },
     ],
   },
   sml: {
     title: 'SML อีต้าเส้า · คืน 17 ธ.ค.', loc: 'HOTEL_SML',
-    why: 'พักแถวท่าเรืออีต้าเส้า เดินไปท่าเรือ/ถนนอาหารได้ ไม่ต้องข้ามทะเลสาบ (ที่พักอีกฝั่งต้องนั่งเรือข้าม)',
+    why: 'พักแถวท่าเรืออีต้าเส้า เดินไปท่าเรือและถนนอาหารได้ ไม่ต้องข้ามทะเลสาบ (ที่พักอีกฝั่งต้องนั่งเรือข้าม)',
     picks: [
-      { n: 'FRIDAY Inn Guest House', tag: 'คะแนนรีวิวสูง', d: 'ใกล้ท่าเรืออีต้าเส้า <0.1 กม. คะแนน 9.4/10 ราคาตัวอย่าง ~US$68/คืน', q: 'FRIDAY Inn Guest House Sun Moon Lake' },
-      { n: 'Sun Moon Lake Crystal Resort', tag: 'ใกล้ท่าเรือ', d: '3.5 ดาว <0.1 กม. จากท่าเรือ คะแนน 8.4/10 ราคาตัวอย่าง ~US$72/คืน', q: 'Sun Moon Lake Crystal Resort' },
-      { n: 'Hu Yue Lakeview Hotel', tag: 'ห้องวิวทะเลสาบ', d: 'ห้องหันหน้าทะเลสาบทุกห้อง (ราว 9 ห้อง) จึงต้องจองเร็ว', q: 'Hu Yue Lakeview Hotel Sun Moon Lake' },
-      { n: 'Sun Moon Lake Full House Resort', tag: 'ประหยัด', d: 'ห่างท่าเรือ ~0.1 กม. คะแนน 8.6/10 ราคาตัวอย่าง ~US$62/คืน', q: 'Sun Moon Lake Full House Resort' },
-      { n: 'Wyndham Sun Moon Lake', tag: 'ถ้าอยากพักดี', d: '4 ดาว ห่างท่าเรือ ~0.4 กม. คะแนน 9.2/10 ราคาตัวอย่าง ~US$248/คืน', q: 'Wyndham Sun Moon Lake' },
+      { n: 'FRIDAY Inn Guest House', d: 'ใกล้ท่าเรืออีต้าเส้า น้อยกว่า 0.1 กม. คะแนน 9.4/10', price: 'ตัวอย่าง ~US$68 ต่อคืน (ราว ฿2,300)', q: 'FRIDAY Inn Guest House Sun Moon Lake' },
+      { n: 'Sun Moon Lake Crystal Resort', d: '3.5 ดาว น้อยกว่า 0.1 กม. จากท่าเรือ คะแนน 8.4/10', price: 'ตัวอย่าง ~US$72 ต่อคืน (ราว ฿2,450)', q: 'Sun Moon Lake Crystal Resort' },
+      { n: 'Sun Moon Lake Full House Resort', d: 'ห่างท่าเรือ ~0.1 กม. คะแนน 8.6/10', price: 'ตัวอย่าง ~US$62 ต่อคืน (ราว ฿2,100)', q: 'Sun Moon Lake Full House Resort' },
+      { n: 'Hu Yue Lakeview Hotel', d: 'ห้องหันหน้าทะเลสาบทุกห้อง (ราว 9 ห้อง) จึงควรจองเร็ว', price: 'ไม่พบราคา', q: 'Hu Yue Lakeview Hotel Sun Moon Lake' },
+      { n: 'Wyndham Sun Moon Lake', d: '4 ดาว ห่างท่าเรือ ~0.4 กม. คะแนน 9.2/10 ถ้าอยากพักดี', price: 'ตัวอย่าง ~US$248 ต่อคืน (ราว ฿8,400)', q: 'Wyndham Sun Moon Lake' },
     ],
   },
   tpe: {
     title: 'ไทเป ซีเหมินติง · คืน 18–19 ธ.ค.', loc: 'HOTEL_TPE',
-    why: 'อยู่ใกล้ MRT ซีเหมิน เดินไปซีเหมินติง/วัดหลงซานได้ ต่อ MRT ไปสถานีไทเปและสนามบินสะดวก และควรมีที่ฝากกระเป๋าวันที่ 20',
+    why: 'อยู่ใกล้ MRT ซีเหมิน เดินไปซีเหมินติงและวัดหลงซานได้ ต่อ MRT ไปสถานีไทเปและสนามบินสะดวก และควรมีที่ฝากกระเป๋าวันที่ 20',
     picks: [
-      { n: 'WESTGATE Hotel', tag: 'คะแนนสูงสุด', d: 'ห่าง MRT ซีเหมิน ~60 ม. คะแนน 9.4/10 (641 รีวิว)', q: 'WESTGATE Hotel Taipei Ximen' },
-      { n: 'CityInn Hotel Plus – Ximending Branch', tag: 'รีวิวเยอะ', d: 'คะแนน 9.1/10 (1,168 รีวิว) อยู่ในรายการแนะนำของเว็บจอง', q: 'CityInn Hotel Plus Ximending Branch' },
-      { n: 'Hotel Midtown Richardson', tag: 'ใกล้ที่สุด', d: 'ห่าง MRT ซีเหมิน ~90 ม. คะแนน 8.0/10 (5,334 รีวิว) มีที่ฝากกระเป๋า (ตามรายการ)', q: 'Hotel Midtown Richardson Taipei' },
-      { n: 'Airline Inn Taipei Ximen', d: 'ห่าง ~170 ม. คะแนน 8.4/10', q: 'Airline Inn Taipei Ximen' },
-      { n: 'Tomorrow Hotel', tag: 'ประหยัด', d: 'เดินจาก MRT ซีเหมินราว 3 นาที', q: 'Tomorrow Hotel Taipei Ximen' },
+      { n: 'CityInn Hotel Plus – Ximending Branch', d: 'คะแนน 9.1/10 (1,168 รีวิว) มีรถรับส่งสนามบินตามคำขอ (~1,100 TWD ต่อคันต่อเที่ยว)', price: 'ตัวอย่าง ~US$62–82 ต่อคืน (ราว ฿2,100–2,800) ตรงกับงบที่ตั้งไว้', q: 'CityInn Hotel Plus Ximending Branch' },
+      { n: 'WESTGATE Hotel', d: 'ห่าง MRT ซีเหมิน ~60 ม. คะแนน 9.4/10 (641 รีวิว)', price: 'ตัวอย่าง ~US$113–135 ต่อคืน (ราว ฿3,800–4,600)', q: 'WESTGATE Hotel Taipei Ximen' },
+      { n: 'Hotel Midtown Richardson', d: 'ห่าง MRT ซีเหมิน ~90 ม. คะแนน 8.0/10 (5,334 รีวิว) มีที่ฝากกระเป๋า (ตามรายการ)', price: 'ไม่พบราคา', q: 'Hotel Midtown Richardson Taipei' },
+      { n: 'Airline Inn Taipei Ximen', d: 'ห่าง ~170 ม. คะแนน 8.4/10', price: 'ไม่พบราคา', q: 'Airline Inn Taipei Ximen' },
+      { n: 'Tomorrow Hotel', d: 'ตัวเลือกประหยัด เดินจาก MRT ซีเหมินราว 3 นาที', price: 'ไม่พบราคา', q: 'Tomorrow Hotel Taipei Ximen' },
     ],
   },
 };

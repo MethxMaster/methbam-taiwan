@@ -60,7 +60,7 @@ const TRIP_END = new Date('2026-12-21T00:00:00+08:00');
 
 /* ---------- state / routing ---------- */
 const TABS = ['plan', 'map', 'places', 'transport', 'cost', 'todo'];
-let state = { tab: 'plan', day: 'all' };
+let state = { tab: 'plan', day: 'all', anchor: null, focus: null };
 (() => {
   const now = new Date();
   if (now >= TRIP_START && now < TRIP_END) state.day = DAYS[Math.min(4, Math.floor((now - TRIP_START) / 864e5))].day;
@@ -69,10 +69,12 @@ function parseHash() {
   const [t, d] = (location.hash || '').slice(1).split('/');
   if (TABS.includes(t)) state.tab = t;
   if (t === 'plan') state.day = DAYS.some(x => x.day === d) ? d : 'all';
+  if (t === 'transport') state.anchor = d || null;
 }
-function go(tab, day) {
+function go(tab, day, anchor) {
   state.tab = tab; if (day) state.day = day;
-  history.replaceState(null, '', `#${tab}${tab === 'plan' && state.day !== 'all' ? '/' + state.day : ''}`);
+  if (anchor) state.anchor = anchor;
+  history.replaceState(null, '', `#${tab}${tab === 'plan' && state.day !== 'all' ? '/' + state.day : ''}${tab === 'transport' && state.anchor ? '/' + state.anchor : ''}`);
   show();
 }
 function show() {
@@ -80,7 +82,11 @@ function show() {
   TABS.forEach(t => $('#tab-' + t).classList.toggle('on', t === state.tab));
   if (state.tab === 'plan') renderPlan();
   if (state.tab === 'map') { initMap(); setTimeout(() => { map.invalidateSize(); drawMap(); }, 30); }
-  window.scrollTo({ top: 0 });
+  const target = state.tab === 'transport' && state.anchor ? document.getElementById('tr-' + state.anchor)
+    : state.tab === 'places' && state.focus ? document.querySelector(`#tab-places .ph[data-place="${state.focus}"]`) : null;
+  if (target) { window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY - 70 }); if (state.focus) target.classList.add('flash'); }
+  else window.scrollTo({ top: 0 });
+  state.anchor = null; state.focus = null;
 }
 $$('.tabs button').forEach(b => b.onclick = () => go(b.dataset.tab));
 
@@ -101,13 +107,21 @@ function openPlace(code) {
         <dt>ความน่าไป</dt><dd>${esc(p.rec)}</dd>
         <dt>หมายเหตุ</dt><dd>${esc(p.note)}</dd>
       </dl>
-      <div class="links"><a href="${gmSearch(p.search + ' Taiwan')}" target="_blank" rel="noopener">เปิดใน Google Maps</a>${p.imgFile ? `<a href="https://commons.wikimedia.org/wiki/File:${enc(p.imgFile)}" target="_blank" rel="noopener">เครดิตรูป</a>` : ''}</div>
+      <div class="links"><button class="more" data-showplace="${p.code}" style="font-size:17px">ดูในแท็บสถานที่</button><a href="${gmSearch(p.search + ' Taiwan')}" target="_blank" rel="noopener">เปิดใน Google Maps</a>${p.imgFile ? `<a href="https://commons.wikimedia.org/wiki/File:${enc(p.imgFile)}" target="_blank" rel="noopener">เครดิตรูป</a>` : ''}</div>
     </div>`;
   $('#sheet').hidden = false;
 }
 $('#sheet').addEventListener('click', e => { if (e.target.closest('[data-close]')) $('#sheet').hidden = true; });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#sheet').hidden = true; });
-document.addEventListener('click', e => { const el = e.target.closest('[data-place]'); if (el) openPlace(el.dataset.place); });
+document.addEventListener('click', e => {
+  const tr = e.target.closest('[data-tr]');
+  if (tr) { $('#sheet').hidden = true; go('transport', null, tr.dataset.tr); return; }
+  const pl = e.target.closest('[data-places]');
+  if (pl) { const v = pl.dataset.places; Object.assign(F, { q: '', g: 'all', d: v === 'plan' ? 'all' : v, s: 'plan', c: 'all' }); renderPlaces(); go('places'); return; }
+  const sp = e.target.closest('[data-showplace]');
+  if (sp) { const p = byCode[sp.dataset.showplace]; Object.assign(F, { q: '', g: gk(p), d: 'all', s: 'all', c: 'all' }); state.focus = p.code; renderPlaces(); $('#sheet').hidden = true; go('places'); return; }
+  const el = e.target.closest('[data-place]'); if (el) openPlace(el.dataset.place);
+});
 
 /* ---------- plan ---------- */
 const NOTES = [
@@ -230,7 +244,7 @@ function renderOverview() {
   const catRows = Object.entries(cats).sort((a, b) => b[1] - a[1]), sub = Object.values(cats).reduce((a, b) => a + b, 0);
   const R = 26, CIRC = 2 * Math.PI * R;
   $('#tab-plan').innerHTML = `<div class="hero"><p class="eyebrow">16–20 ธ.ค. 2569 · 2 คน</p><h1>ไต้หวัน<br>5 วัน 4 คืน</h1><p class="sub">ไม่เช่ารถ ใช้ HSR บัส และ MRT</p>
-      <p class="cta"><button class="more" data-day="D1">ดูแผนรายวัน</button><button class="more" data-goto="cost">ดูงบ</button></p></div>
+      <p class="cta"><button class="more" data-day="D1">ดูแผนรายวัน</button><button class="more" data-places="plan">ดูสถานที่ในแผน</button><button class="more" data-goto="transport">ดูตั๋วและการเดินทาง</button><button class="more" data-goto="cost">ดูงบ</button></p></div>
     ${subTabs('all')}
     <div class="bento">
       <div class="w"><div class="wl">นับถอยหลัง</div><div class="wn">${dl.n}<small>วัน</small></div><div class="wd">${dl.l}</div></div>
@@ -296,6 +310,7 @@ function renderDay() {
   const left = d.avail - visit - travel;
   const status = left < 0 ? 'แน่นเกิน' : left < 1.5 ? 'ตึง' : 'โอเค';
   const costs = dayCosts(d.day), ctot = costs.reduce((s, r) => s + r.v, 0);
+  const dayTr = TRANSPORT.filter(x => x.d === d.day);
   const { steps, stops } = computeSteps(d);
   const main = `
     ${blk('ตารางเวลา', tile(steps.map(s => `<div class="sr k-${s.k}"><div class="st">${esc(s.t)}</div><div><div class="stt">${esc(s.title)}</div>${s.d ? `<div class="sd">${esc(s.d)}</div>` : ''}
@@ -303,7 +318,8 @@ function renderDay() {
       ${s.tip ? `<div class="tip">${esc(s.tip)}</div>` : ''}</div></div>`).join('') + `<p class="note">${esc(d.note)} · เวลาทั้งหมดเป็นค่าประมาณ</p>`))}
     ${blk('ที่พักแนะนำ', tile(hotelBlock(HOTEL_FOR_DAY[d.day], d.day)))}
     ${info.book.length ? blk('ต้องจองหรือซื้อ', tile(info.book.map(b => `<div class="item"><b>${esc(b.t)}</b><span class="due">${esc(b.due)}</span><div class="small">${esc(b.d)}</div></div>`).join('') + '<button class="more" data-goto="todo" style="margin-top:14px;font-size:16px">เปิดรายการเตรียมตัว</button>')) : ''}
-    ${places.length ? blk('สถานที่', `<div class="strip">${places.map(p => photo(p)).join('')}</div>`) : ''}
+    ${places.length ? blk('สถานที่', `<div class="strip">${places.map(p => photo(p)).join('')}</div><button class="more" data-places="${d.day}" style="margin-top:12px;font-size:16px">ดูในแท็บสถานที่</button>`) : ''}
+    ${dayTr.length ? blk('ตั๋วและวิธีซื้อ', tile(dayTr.map((x, k) => { const r = x.rows.find(rw => /ราคา/.test(rw[0])) || x.rows[0]; return `<button class="item trlink" data-tr="${d.day}-${k}"><b>${esc(x.t)}</b><div class="small">${esc(r[0])}: ${esc(r[1].length > 90 ? r[1].slice(0, 90) + '…' : r[1])} ${stTag(r[2])}</div><span class="go2">ดูวิธีซื้อและราคา</span></button>`; }).join('') + '<p class="note">กดเพื่อไปแท็บเดินทาง · ข้อมูลส่วนใหญ่ยังไม่ยืนยันกับหน้าทางการ ดูป้ายสถานะ</p>'), 'ซื้อที่ไหน ราคา และตารางเวลาของแต่ละช่วงวันนี้') : ''}
     ${blk('การเดินทาง', tile(legs.map(l => `<div class="item"><div style="display:flex;justify-content:space-between;gap:12px"><b>${esc(l.frm)} → ${esc(l.to)}</b><span class="small" style="white-space:nowrap">${l.min >= 60 ? fmtH(l.min / 60) + ' ชม.' : l.min + ' น.'}</span></div><div class="small">${esc(l.mode)}${l.km ? ` · ${l.km} กม.` : ''}${l.note ? ` · ${esc(l.note)}` : ''}</div></div>`).join('')))}`;
   const aside = `
     ${blk('แผนที่วันนี้', `<div class="tile flush"><div id="daymap" class="mini"></div></div><div class="stops">${stops.map(s => `<a href="${gmSearch(s.q)}" target="_blank" rel="noopener"><b>${s.mark}</b>${esc(s.name)}</a>`).join('')}</div><p class="note">ตำแหน่งโดยประมาณ กดชื่อเพื่อเปิด Google Maps</p>`)}
@@ -405,7 +421,7 @@ function renderTransport() {
       <p class="note">ก่อนซื้อจริง ให้เปิดเว็บทางการเช็คราคาและเวลาอีกครั้ง: ${Object.values(LINKS).map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(n)}</a>`).join(' · ')}</p>`))}
     ${blk('ซื้อ/จองเมื่อไร', tile(WHEN.map(([k, v]) => `<div class="item"><b>${esc(k)}</b><div class="small" style="color:var(--ink)">${esc(v)}</div></div>`).join('')))}
     ${blk('แพ็กเกจและบัสที่เหมาะกับเรา', `<div class="stack">${PACKS.map(p => `<div class="tile"><div class="phead"><b>${esc(p.t)}</b><span class="verdict">${esc(p.v)}</span></div><p style="margin-top:8px;font-size:15.5px">${esc(p.body)}</p><p class="small" style="margin-top:8px">${srcLinks(p.src)}</p></div>`).join('')}</div>`, 'ส่วนนี้เป็นความเห็นของผมจากข้อมูลด้านล่าง ไม่ใช่ข้อมูลทางการ')}
-    ${DAYS.map(d => { const items = TRANSPORT.filter(x => x.d === d.day); return items.length ? blk(`${d.day} · ${esc(dayLabel(d))}`, `<div class="stack">${items.map(x => `<div class="tile"><div class="phead"><b>${esc(x.t)}</b></div>${x.rows.map(([lb, tx, s, src]) => `<div class="trow"><div class="tl2">${esc(lb)}</div><div class="tx">${esc(tx)} ${stTag(s)}${src && src.length ? `<div class="small" style="margin-top:4px">ดูเพิ่ม: ${srcLinks(src)}</div>` : ''}</div></div>`).join('')}</div>`).join('')}</div>`) : ''; }).join('')}`;
+    ${DAYS.map(d => { const items = TRANSPORT.filter(x => x.d === d.day); return items.length ? blk(`${d.day} · ${esc(dayLabel(d))}`, `<div class="stack">${items.map((x, k) => `<div class="tile" id="tr-${d.day}-${k}"><div class="phead"><b>${esc(x.t)}</b></div>${x.rows.map(([lb, tx, s, src]) => `<div class="trow"><div class="tl2">${esc(lb)}</div><div class="tx">${esc(tx)} ${stTag(s)}${src && src.length ? `<div class="small" style="margin-top:4px">ดูเพิ่ม: ${srcLinks(src)}</div>` : ''}</div></div>`).join('')}</div>`).join('')}</div>`).replace('<div class="blk">', `<div class="blk" id="tr-${d.day}">`) : ''; }).join('')}`;
 }
 
 /* ---------- cost ---------- */

@@ -3,37 +3,34 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0f766e">
+<meta name="theme-color" content="#fbfaf7">
 <title>ทริปไต้หวัน 16–20 ธ.ค. 2569</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="./assets/index-CKX5rFry.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-B3G21nrP.css">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="./assets/index-DEtMf8o0.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CK2Tw0re.css">
 </head>
 <body>
 <header class="top">
-  <div class="top-in">
-    <div class="brand">
-      <span class="brand-ico">🇹🇼</span>
-      <div><h1>ทริปไต้หวัน</h1><p>16–20 ธ.ค. 2569 · 2 คน</p></div>
-    </div>
-    <div id="countdown" class="count"></div>
+  <div class="wrap top-in">
+    <div class="brand"><b>ทริปไต้หวัน</b><span>16–20 ธ.ค. 2569</span></div>
+    <span id="countdown"></span>
   </div>
-  <nav class="tabs" id="tabs" aria-label="เมนูหลัก">
-    <button data-tab="plan"><i>📅</i><span>แผน</span></button>
-    <button data-tab="map"><i>🗺️</i><span>แผนที่</span></button>
-    <button data-tab="places"><i>📸</i><span>สถานที่</span></button>
-    <button data-tab="cost"><i>💰</i><span>งบ</span></button>
-    <button data-tab="todo"><i>✅</i><span>เตรียมตัว</span></button>
+  <nav class="wrap tabs" id="tabs" aria-label="เมนูหลัก">
+    <button data-tab="plan">แผน</button>
+    <button data-tab="map">แผนที่</button>
+    <button data-tab="places">สถานที่</button>
+    <button data-tab="cost">งบ</button>
+    <button data-tab="todo">เตรียมตัว</button>
   </nav>
 </header>
 <main>
-  <section id="tab-plan"></section>
-  <section id="tab-map"><div class="mapbar" id="mapbar"></div><div id="map"></div></section>
-  <section id="tab-places"></section>
-  <section id="tab-cost"></section>
-  <section id="tab-todo"></section>
+  <section id="tab-plan" class="wrap"></section>
+  <section id="tab-map"><div class="wrap"><div class="seg" id="mapbar"></div></div><div id="map"></div></section>
+  <section id="tab-places" class="wrap wide"></section>
+  <section id="tab-cost" class="wrap"></section>
+  <section id="tab-todo" class="wrap"></section>
 </main>
 <div id="sheet" class="sheet" hidden><div class="sheet-bg" data-close></div><div class="sheet-box" id="sheetBox"></div></div>
 </body>

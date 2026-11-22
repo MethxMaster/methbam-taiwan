@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import D from './trip.json';
 import { TODO } from './todo.js';
 import { DAY_INFO, COST_DAYS, LOCS, HOTELS, HOTEL_FOR_DAY } from './days.js';
+import { TRANSPORT, PACKS, WHEN, STATUS, LINKS } from './transport.js';
 
 /* ---------- helpers ---------- */
 const $ = (s, r = document) => r.querySelector(s);
@@ -58,7 +59,7 @@ const TRIP_END = new Date('2026-12-21T00:00:00+08:00');
 })();
 
 /* ---------- state / routing ---------- */
-const TABS = ['plan', 'map', 'places', 'cost', 'todo'];
+const TABS = ['plan', 'map', 'places', 'transport', 'cost', 'todo'];
 let state = { tab: 'plan', day: 'all' };
 (() => {
   const now = new Date();
@@ -393,6 +394,20 @@ function renderPlaces() {
   $$('#cats button').forEach(b => b.onclick = () => { F.c = b.dataset.c; renderPlaces(); });
 }
 
+/* ---------- transport ---------- */
+const stTag = s => `<span class="stt2 st-${STATUS[s][1]}">${STATUS[s][0]}</span>`;
+const srcLinks = arr => (arr || []).map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(n)}</a>`).join(' · ');
+function renderTransport() {
+  const dayOf = d => DAYS.find(x => x.day === d);
+  $('#tab-transport').innerHTML = `<div class="hero" style="text-align:left;padding:40px 0 0"><p class="eyebrow">ตั๋วและวิธีเดินทาง</p><h1>เดินทาง</h1><p class="sub">ซื้อที่ไหน ราคาเท่าไร เมื่อไรต้องจอง · แยกว่าอะไรยืนยันแล้ว อะไรยังไม่ยืนยัน</p></div>
+    ${blk('อ่านก่อน', tile(`<p>ข้อมูลทั้งหมดค้นจากเว็บเมื่อ 22 พ.ย. 2569 <b>เครื่องที่ใช้ค้นเปิดหน้าเว็บทางการโดยตรงไม่ได้</b> จึงยืนยันได้แค่ข้อความที่เห็นในผลค้นหา แต่ละข้อมีป้ายสถานะ:</p>
+      <div class="stlegend"><div>${stTag('off')} <span>ข้อความจากหน้าเว็บทางการที่เห็นในผลค้นหา (ยังไม่ได้เปิดอ่านหน้าเอง)</span></div><div>${stTag('sec')} <span>บล็อก ไกด์ หรือเว็บขายตั๋ว ตัวเลขอาจเก่าหรือไม่ตรงกัน</span></div><div>${stTag('no')} <span>ไม่พบข้อมูลที่เชื่อถือได้ ต้องเช็คเอง ผมไม่ได้เดา</span></div></div>
+      <p class="note">ก่อนซื้อจริง ให้เปิดเว็บทางการเช็คราคาและเวลาอีกครั้ง: ${Object.values(LINKS).map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(n)}</a>`).join(' · ')}</p>`))}
+    ${blk('ซื้อ/จองเมื่อไร', tile(WHEN.map(([k, v]) => `<div class="item"><b>${esc(k)}</b><div class="small" style="color:var(--ink)">${esc(v)}</div></div>`).join('')))}
+    ${blk('แพ็กเกจและบัสที่เหมาะกับเรา', `<div class="stack">${PACKS.map(p => `<div class="tile"><div class="phead"><b>${esc(p.t)}</b><span class="verdict">${esc(p.v)}</span></div><p style="margin-top:8px;font-size:15.5px">${esc(p.body)}</p><p class="small" style="margin-top:8px">${srcLinks(p.src)}</p></div>`).join('')}</div>`, 'ส่วนนี้เป็นความเห็นของผมจากข้อมูลด้านล่าง ไม่ใช่ข้อมูลทางการ')}
+    ${DAYS.map(d => { const items = TRANSPORT.filter(x => x.d === d.day); return items.length ? blk(`${d.day} · ${esc(dayLabel(d))}`, `<div class="stack">${items.map(x => `<div class="tile"><div class="phead"><b>${esc(x.t)}</b></div>${x.rows.map(([lb, tx, s, src]) => `<div class="trow"><div class="tl2">${esc(lb)}</div><div class="tx">${esc(tx)} ${stTag(s)}${src && src.length ? `<div class="small" style="margin-top:4px">ดูเพิ่ม: ${srcLinks(src)}</div>` : ''}</div></div>`).join('')}</div>`).join('')}</div>`) : ''; }).join('')}`;
+}
+
 /* ---------- cost ---------- */
 const COST_KEY = 'tw2026-cost-v5';
 const defaults = { s: { ...D.settings }, items: D.items.map(i => ({ price: i.price, qty: i.qty })) };
@@ -447,6 +462,6 @@ function renderTodo() {
 
 /* ---------- boot ---------- */
 parseHash();
-renderPlaces(); renderCost(); renderTodo();
+renderPlaces(); renderTransport(); renderCost(); renderTodo();
 window.addEventListener('hashchange', () => { parseHash(); show(); });
 show();

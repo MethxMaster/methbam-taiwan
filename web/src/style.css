@@ -263,3 +263,22 @@ h1 { font-size:44px; line-height:1.1; font-weight:600; letter-spacing:-.025em; m
 .fchip.on { background:var(--ink); color:var(--bg); }
 .fchip.on small { color:var(--bg); opacity:.7; }
 .sb .chip { margin:0 6px 6px 0; }
+
+/* transport */
+.phead { display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
+.phead b { font-size:17px; line-height:1.35; }
+.verdict { font-size:12.5px; font-weight:600; color:var(--eyebrow); white-space:nowrap; }
+.trow { display:grid; grid-template-columns:86px 1fr; gap:4px 12px; padding:11px 0; border-top:1px solid var(--line); font-size:15px; }
+.phead + .trow { margin-top:10px; }
+.trow .tl2 { color:var(--muted); }
+.trow .tx { line-height:1.5; }
+.trow .small a { font-weight:500; }
+.stt2 { display:inline-block; font-size:11.5px; font-weight:600; padding:1px 8px; border-radius:980px; margin-left:4px; vertical-align:1px; white-space:nowrap; }
+.st-off { background:color-mix(in srgb,#34c759 22%,transparent); color:#1a7f37; }
+.st-sec { background:color-mix(in srgb,#0071e3 16%,transparent); color:var(--blue); }
+.st-no { background:color-mix(in srgb,#ff9500 22%,transparent); color:var(--eyebrow); }
+.stlegend { display:grid; gap:8px; margin-top:10px; font-size:14.5px; }
+.stlegend .stt2 { margin-left:0; margin-right:6px; }
+@media (max-width:430px) { .trow { grid-template-columns:1fr; } .tabs { gap:16px; } }
+
+@media (max-width:430px) { .brand { font-size:13px; } .top-in { gap:10px; padding:0 16px; } .tabs { gap:13px; } .tabs button { font-size:12.5px; } }

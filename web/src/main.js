@@ -80,6 +80,7 @@ function go(tab, day, anchor) {
   show();
 }
 function show() {
+  document.body.classList.remove('no-scroll'); $$('.mapfs').forEach(e => e.classList.remove('mapfs'));
   $$('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === state.tab));
   TABS.forEach(t => $('#tab-' + t).classList.toggle('on', t === state.tab));
   if (state.tab === 'plan') renderPlan();
@@ -160,6 +161,39 @@ function bindDay(root) {
 let miniMap = null;
 const pinIcon = (label, cls = '', color = '') => L.divIcon({ className: '', iconSize: null, html: `<div class="pin ${cls}" ${color ? `style="--pc:${color}"` : ''}>${label}</div>` });
 const baseTiles = m => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Tiles &copy; Esri' }).addTo(m);
+
+// ปุ่มดูแผนที่เต็มจอ (ใช้ CSS ไม่พึ่ง Fullscreen API เพื่อให้ทำงานบน iPhone ได้)
+const FS_OPEN = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+const FS_CLOSE = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+function addFullscreen(m) {
+  const el = m.getContainer();
+  const orig = { drag: m.dragging.enabled(), wheel: m.scrollWheelZoom.enabled() };
+  let on = false, btn;
+  const toggle = (force) => {
+    on = typeof force === 'boolean' ? force : !on;
+    el.classList.toggle('mapfs', on);
+    document.body.classList.toggle('no-scroll', on);
+    btn.innerHTML = on ? FS_CLOSE : FS_OPEN;
+    btn.setAttribute('aria-label', on ? 'ออกจากเต็มจอ' : 'ดูเต็มจอ');
+    if (on) { m.dragging.enable(); m.scrollWheelZoom.enable(); }
+    else { if (!orig.drag) m.dragging.disable(); if (!orig.wheel) m.scrollWheelZoom.disable(); }
+    setTimeout(() => { m.invalidateSize(); if (m._spread) m._spread(); }, 60);
+  };
+  const C = L.Control.extend({
+    options: { position: 'topright' },
+    onAdd() {
+      btn = L.DomUtil.create('button', 'fsbtn');
+      btn.type = 'button'; btn.innerHTML = FS_OPEN; btn.setAttribute('aria-label', 'ดูเต็มจอ');
+      L.DomEvent.disableClickPropagation(btn);
+      btn.onclick = () => toggle();
+      return btn;
+    },
+  });
+  m.addControl(new C());
+  const onKey = e => { if (e.key === 'Escape' && on) toggle(false); };
+  document.addEventListener('keydown', onKey);
+  m.on('unload', () => { document.removeEventListener('keydown', onKey); document.body.classList.remove('no-scroll'); });
+}
 const DAYC = { D1: '#0071e3', D2: '#af52de', D3: '#ff2d55', D4: '#ff9500', D5: '#34c759' };
 const dayColor = d => DAYC[d] || '#8a949b';
 const MERC = L.Projection.SphericalMercator;
@@ -198,6 +232,7 @@ function spreadPins(m, group, items) {
 function drawDayMap(el, stops, color) {
   const m = L.map(el, { scrollWheelZoom: false, dragging: !L.Browser.mobile });
   baseTiles(m);
+  addFullscreen(m);
   const items = drawDayRoute(m, stops, color);
   const pts = stops.map(s => [s.lat, s.lng]);
   const group = L.layerGroup().addTo(m);
@@ -282,6 +317,7 @@ function renderOverview() {
   const el = $('#ovmap'); if (!el) return;
   const m = L.map(el, { scrollWheelZoom: false, dragging: !L.Browser.mobile });
   baseTiles(m);
+  addFullscreen(m);
   const { pts, items } = drawOverviewRoute(m);
   const group = L.layerGroup().addTo(m);
   miniMap = m;
@@ -359,6 +395,7 @@ function initMap() {
   if (map) return;
   map = L.map('map').setView([24.3, 121.1], 8);
   baseTiles(map);
+  addFullscreen(map);
   layer = L.layerGroup().addTo(map);
   pins = L.layerGroup().addTo(map);
   const opts = [['plan', 'ทั้งทริป'], ...DAYS.map(d => [d.day, d.day]), ['all', 'ทุกสถานที่']];

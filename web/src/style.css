@@ -311,3 +311,10 @@ h1 { font-size:44px; line-height:1.1; font-weight:600; letter-spacing:-.025em; m
 .meta .lnk { vertical-align:baseline; }
 
 .hprice { font-weight:600; }
+/* fullscreen map */
+.fsbtn { display:grid; place-items:center; width:34px; height:34px; margin:10px 10px 0 0; background:var(--bg); color:var(--ink); border:0; border-radius:10px; box-shadow:0 1px 6px rgba(0,0,0,.25); cursor:pointer; }
+.leaflet-top.leaflet-right .fsbtn { float:right; }
+.mapfs { position:fixed !important; inset:0; z-index:3000; width:100vw !important; height:100dvh !important; border-radius:0 !important; margin:0 !important; }
+.mapfs .leaflet-top { top:env(safe-area-inset-top); }
+.mapfs .leaflet-bottom { bottom:env(safe-area-inset-bottom); }
+body.no-scroll { overflow:hidden; }

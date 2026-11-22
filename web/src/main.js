@@ -23,6 +23,20 @@ const AIRPORT = { lat: 25.0777, lng: 121.2328 };
 const ORDER = { D1: [], D2: ['E2', 'E1', 'F1'], D3: ['F2', 'B1'], D4: ['C1', 'C2', 'D1'], D5: ['A2', 'A1'] };
 const GROUP_SHORT = { A: 'ไทเป', B: 'อูไหล', C: 'จีหลง', D: 'จิ่วเฟิ่น', E: 'อาลีซาน', F: 'SML', G: 'ทางผ่าน' };
 const gk = p => p.code.replace(/\d+/g, '');
+// หมวดหมู่สถานที่ (จัดกลุ่มจากแท็กเดิมของแต่ละที่)
+const CATS = [
+  ['nature', 'ธรรมชาติ & วิว', ['ธรรมชาติ', 'วิว', 'เดินป่า', 'ภูเขา', 'ทะเล', 'ทะเลสาบ', 'ทะเลหมอก']],
+  ['city', 'ในเมือง', ['เมือง', 'ช้อปปิ้ง', 'ศิลปะ/ครีเอทีฟ', 'ศิลปะ', 'สถาปัตยกรรม']],
+  ['landmark', 'แลนด์มาร์ก', ['แลนด์มาร์ก']],
+  ['temple', 'วัด & ประวัติศาสตร์', ['วัด', 'ประวัติศาสตร์', 'พิพิธภัณฑ์', 'วัฒนธรรม']],
+  ['old', 'ย่านเก่า', ['ย่านเก่า']],
+  ['food', 'ตลาด & อาหาร', ['ตลาดกลางคืน', 'อาหาร']],
+  ['onsen', 'น้ำพุร้อน', ['น้ำพุร้อน']],
+  ['photo', 'ถ่ายรูป', ['ถ่ายรูป']],
+  ['family', 'ครอบครัว & กิจกรรม', ['ครอบครัว', 'ออกกำลัง', 'ตามฤดู']],
+];
+const tagsOf = p => p.tags.split(',').map(s => s.trim()).filter(Boolean);
+const inCat = (p, c) => tagsOf(p).some(x => c[2].includes(x));
 const dayDate = d => new Date(d.date + 'T00:00:00');
 const dayLabel = d => `${d.wd} ${dayDate(d).getDate()} ธ.ค.`;
 const WD = { 'พุธ': 'พุธ', 'พฤหัสบดี': 'พฤ.', 'ศุกร์': 'ศุกร์', 'เสาร์': 'เสาร์', 'อาทิตย์': 'อา.' };
@@ -82,6 +96,7 @@ function openPlace(code) {
         <dt>เวลาเที่ยว</dt><dd>${esc(p.hours)} ชม.</dd>
         <dt>ช่วงที่ดี</dt><dd>${esc(p.best)}</dd>
         ${p.drive ? `<dt>ห่างจุดหลัก</dt><dd>~${esc(p.drive)} นาที</dd>` : ''}
+        <dt>ประเภท</dt><dd>${tagsOf(p).map(x => `<span class="chip">${esc(x)}</span>`).join('')}</dd>
         <dt>ความน่าไป</dt><dd>${esc(p.rec)}</dd>
         <dt>หมายเหตุ</dt><dd>${esc(p.note)}</dd>
       </dl>
@@ -349,23 +364,33 @@ function drawMap() {
 }
 
 /* ---------- places ---------- */
-const F = { q: '', g: 'all', d: 'all' };
+const F = { q: '', g: 'all', d: 'all', s: 'all', c: 'all' };
+const placeCard = p => {
+  const src = img(p), dc = p.day ? dayColor(p.day) : '';
+  return `<button class="ph ${p.day ? 'in' : ''}" data-place="${p.code}" ${p.day ? `style="--dc:${dc}"` : ''}><div class="pw">${src ? `<img src="${esc(src)}" alt="" loading="lazy">` : '<div class="noimg">ยังไม่มีรูป</div>'}${p.day ? `<span class="pb">ในแผน · ${p.day}</span>` : ''}</div><div class="n">${esc(p.name)}</div><div class="s">${esc(GROUP_SHORT[gk(p)])} · ${esc(p.hours)} ชม.</div><div class="tg">${tagsOf(p).slice(0, 3).map(x => `<span>${esc(x)}</span>`).join('')}</div></button>`;
+};
 function renderPlaces() {
-  $('#tab-places').innerHTML = `<div class="hero" style="text-align:left;padding:40px 0 0"><h1>สถานที่</h1><p class="sub">${P.length} แห่ง · กดรูปเพื่อดูรายละเอียด</p></div>
-    <div class="filters" style="margin-top:18px"><input id="q" placeholder="ค้นหา เช่น น้ำพุร้อน ตลาดกลางคืน" value="${esc(F.q)}">
+  const nPlan = P.filter(p => p.day).length;
+  $('#tab-places').innerHTML = `<div class="hero" style="text-align:left;padding:40px 0 0"><h1>สถานที่</h1><p class="sub">${P.length} แห่ง · <span style="color:var(--ink)">ในแผนของเรา ${nPlan} แห่ง</span> · กดรูปเพื่อดูรายละเอียด</p></div>
+    <div class="filters" style="margin-top:22px"><input id="q" placeholder="ค้นหา เช่น น้ำพุร้อน ตลาดกลางคืน" value="${esc(F.q)}">
       <select id="fg"><option value="all">ทุกโซน</option>${Object.entries(GROUP_SHORT).map(([k, v]) => `<option value="${k}" ${F.g === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
-      <select id="fd"><option value="all">ทุกวัน</option>${DAYS.map(d => `<option value="${d.day}" ${F.d === d.day ? 'selected' : ''}>${d.day}</option>`).join('')}<option value="none" ${F.d === 'none' ? 'selected' : ''}>ยังไม่วาง</option></select></div>
-    <div class="small" id="pcount" style="margin-top:14px"></div><div class="grid" id="pgrid"></div>`;
+      <select id="fd"><option value="all">ทุกวัน</option>${DAYS.map(d => `<option value="${d.day}" ${F.d === d.day ? 'selected' : ''}>${d.day}</option>`).join('')}</select></div>
+    <div style="margin-top:14px"><div class="seg" id="scope">${[['all', 'ทั้งหมด'], ['plan', `ในแผน (${nPlan})`], ['none', `ยังไม่วาง (${P.length - nPlan})`]].map(([v, tx]) => `<button class="${F.s === v ? 'on' : ''}" data-s="${v}">${tx}</button>`).join('')}</div></div>
+    <div class="cats" id="cats"><button class="fchip ${F.c === 'all' ? 'on' : ''}" data-c="all">ทุกประเภท</button>${CATS.map(c => `<button class="fchip ${F.c === c[0] ? 'on' : ''}" data-c="${c[0]}">${c[1]} <small>${P.filter(p => inCat(p, c)).length}</small></button>`).join('')}</div>
+    <div id="pout"></div>`;
   const draw = () => {
-    const q = F.q.trim().toLowerCase();
-    const list = P.filter(p => (F.g === 'all' || gk(p) === F.g) && (F.d === 'all' || (F.d === 'none' ? !p.day : p.day === F.d)) && (!q || (p.name + ' ' + p.tags + ' ' + p.code).toLowerCase().includes(q)));
-    $('#pcount').textContent = `${list.length} แห่ง`;
-    $('#pgrid').innerHTML = list.map(p => { const src = img(p); return `<button class="ph" data-place="${p.code}">${src ? `<img src="${esc(src)}" alt="" loading="lazy">` : '<div class="noimg">ยังไม่มีรูป</div>'}<div class="n">${esc(p.name)}</div><div class="s">${esc(GROUP_SHORT[gk(p)])} · ${esc(p.hours)} ชม.${p.day ? ' · ' + p.day : ''}</div></button>`; }).join('') || '<p class="plain">ไม่มีสถานที่ตรงกับตัวกรอง</p>';
+    const q = F.q.trim().toLowerCase(), cat = CATS.find(c => c[0] === F.c);
+    const list = P.filter(p => (F.g === 'all' || gk(p) === F.g) && (F.d === 'all' || p.day === F.d) && (F.s === 'all' || (F.s === 'plan' ? p.day : !p.day)) && (!cat || inCat(p, cat)) && (!q || (p.name + ' ' + p.tags + ' ' + p.code).toLowerCase().includes(q)));
+    const plan = list.filter(p => p.day).sort((a, b) => a.day.localeCompare(b.day)), other = list.filter(p => !p.day);
+    const sec = (title, arr) => arr.length ? `<h3 class="gh">${title} <span>${arr.length}</span></h3><div class="grid">${arr.map(placeCard).join('')}</div>` : '';
+    $('#pout').innerHTML = (sec('ในแผนของเรา', plan) + sec(plan.length ? 'ตัวเลือกเพิ่มเติม' : 'สถานที่', other)) || '<p class="plain" style="margin-top:24px">ไม่มีสถานที่ตรงกับตัวกรอง</p>';
   };
   draw();
   $('#q').oninput = e => { F.q = e.target.value; draw(); };
   $('#fg').onchange = e => { F.g = e.target.value; draw(); };
   $('#fd').onchange = e => { F.d = e.target.value; draw(); };
+  $$('#scope button').forEach(b => b.onclick = () => { F.s = b.dataset.s; renderPlaces(); });
+  $$('#cats button').forEach(b => b.onclick = () => { F.c = b.dataset.c; renderPlaces(); });
 }
 
 /* ---------- cost ---------- */

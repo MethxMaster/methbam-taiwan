@@ -247,3 +247,19 @@ h1 { font-size:44px; line-height:1.1; font-weight:600; letter-spacing:-.025em; m
 .dkey span { display:inline-flex; align-items:center; gap:6px; }
 .dkey i { width:18px; height:5px; border-radius:3px; display:inline-block; }
 #maplist { padding-top:18px; padding-bottom:20px; }
+
+/* places: in-plan highlight + tags */
+.pw { position:relative; }
+.ph.in .pw img { outline:3px solid var(--dc); outline-offset:-3px; }
+.pb { position:absolute; top:10px; left:10px; background:var(--dc); color:#fff; font-size:12px; font-weight:600; padding:3px 11px; border-radius:980px; box-shadow:0 1px 4px rgba(0,0,0,.25); }
+.tg { margin-top:4px; display:flex; flex-wrap:wrap; gap:4px 6px; }
+.tg span { font-size:12px; color:var(--muted); background:var(--alt); border-radius:980px; padding:1px 9px; }
+.gh { font-size:22px; font-weight:600; letter-spacing:-.02em; margin-top:40px; }
+.gh span { color:var(--muted); font-weight:500; font-size:17px; margin-left:4px; }
+.cats { display:flex; gap:8px; overflow-x:auto; scrollbar-width:none; margin-top:14px; padding-bottom:4px; }
+.cats::-webkit-scrollbar { display:none; }
+.fchip { flex:none; background:var(--alt); border-radius:980px; padding:7px 15px; font-size:14.5px; color:var(--ink); white-space:nowrap; }
+.fchip small { color:var(--muted); font-size:12.5px; margin-left:3px; }
+.fchip.on { background:var(--ink); color:var(--bg); }
+.fchip.on small { color:var(--bg); opacity:.7; }
+.sb .chip { margin:0 6px 6px 0; }

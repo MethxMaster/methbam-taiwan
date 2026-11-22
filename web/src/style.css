@@ -290,7 +290,7 @@ h1 { font-size:44px; line-height:1.1; font-weight:600; letter-spacing:-.025em; m
 .sb .links button.more { color:var(--blue); }
 .ph.flash .pw img { animation:flashring 1.8s ease 1; }
 @keyframes flashring { 0%,60% { box-shadow:0 0 0 5px var(--btn); } 100% { box-shadow:0 0 0 0 transparent; } }
-.tile[id^="tr-"],.blk[id^="tr-"] { scroll-margin-top:70px; }
+.tile[id^="tr-"],.blk[id^="tr-"] { scroll-margin-top:340px; }
 
 /* food */
 .fgrid { display:grid; grid-template-columns:1fr; gap:12px; margin-top:16px; }
@@ -318,3 +318,24 @@ h1 { font-size:44px; line-height:1.1; font-weight:600; letter-spacing:-.025em; m
 .mapfs .leaflet-top { top:env(safe-area-inset-top); }
 .mapfs .leaflet-bottom { bottom:env(safe-area-inset-bottom); }
 body.no-scroll { overflow:hidden; }
+
+/* maps inside tabs */
+.tmwrap { position:sticky; top:calc(48px + env(safe-area-inset-top)); z-index:900; background:var(--bg); padding:10px 0 8px; margin-top:18px; }
+.tm { height:230px; border-radius:20px; overflow:hidden; background:var(--alt); }
+@media (min-width:735px) { .tm { height:320px; } }
+.tinfo { display:flex; justify-content:space-between; align-items:center; gap:6px 14px; flex-wrap:wrap; padding:8px 2px 0; min-height:40px; font-size:14px; }
+.tit b { font-size:15.5px; font-weight:600; }
+.tbtn { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+.tbtn .more { font-size:14.5px; }
+.tnote { padding:2px 2px 0; width:100%; }
+.pin.sel { transform:scale(1.4); box-shadow:0 0 0 4px rgba(0,113,227,.5); z-index:2000; }
+.pw { border-radius:20px; }
+.pw .cn { position:absolute; top:10px; right:10px; z-index:2; background:rgba(0,0,0,.55); color:#fff; font-size:11.5px; font-weight:600; padding:2px 9px; border-radius:980px; }
+.fd .cn { position:absolute; top:16px; right:18px; min-width:26px; height:26px; padding:0 7px; display:grid; place-items:center; background:var(--bg); color:var(--muted); font-size:12.5px; font-weight:600; border-radius:980px; }
+.cn2 { display:inline-grid; place-items:center; min-width:22px; height:22px; border-radius:50%; background:var(--ink); color:var(--bg); font-size:12px; margin-right:8px; vertical-align:1px; }
+.fd[data-pick],.ph[data-pick],.pickable { cursor:pointer; }
+.fd.sel { box-shadow:0 0 0 3px var(--btn); }
+.fd.in.sel { box-shadow:inset 0 0 0 3px var(--dc),0 0 0 3px var(--btn); }
+.ph.sel .pw { box-shadow:0 0 0 4px var(--btn); }
+.pickable.sel { box-shadow:inset 0 0 0 3px var(--btn); }
+.embed { width:100%; height:52dvh; border:0; display:block; background:var(--alt); }

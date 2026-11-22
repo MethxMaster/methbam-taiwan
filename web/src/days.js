@@ -15,6 +15,12 @@ export const LOCS = {
   TPE_MAIN: { name: 'สถานีไทเป (HSR/MRT/TRA)', lat: 25.0478, lng: 121.5170, q: 'Taipei Main Station' },
   HOTEL_TPE: { name: 'ย่านที่พักซีเหมินติง', lat: 25.0426, lng: 121.5083, q: 'Ximen MRT Station Taipei' },
   XINDIAN: { name: 'MRT ซินเตี้ยน (ต่อบัส 849)', lat: 24.9576, lng: 121.5374, q: 'Xindian MRT Station' },
+  CHIAYI_STN: { name: 'ย่านสถานีรถไฟเจียอี้', lat: 23.4793, lng: 120.4413, q: 'Chiayi Railway Station' },
+  FENQIHU: { name: 'ย่านเฟิ่นฉีหู', lat: 23.5040, lng: 120.6890, q: 'Fenqihu Old Street' },
+  FANLU: { name: 'ย่านฟานลู่', lat: 23.4550, lng: 120.5830, q: 'Fanlu Township Chiayi' },
+  SML_CENTER: { name: 'ย่าน SML (ไม่ทราบจุดแน่ชัด)', lat: 23.8570, lng: 120.9140, q: 'Sun Moon Lake' },
+  RAOHE: { name: 'ตลาดกลางคืนเหราเหอ', lat: 25.0508, lng: 121.5776, q: 'Raohe Street Night Market' },
+  SHILIN: { name: 'ตลาดกลางคืนซื่อหลิน', lat: 25.0879, lng: 121.5243, q: 'Shilin Night Market' },
   KEELUNG_STN: { name: 'สถานีรถไฟจีหลง', lat: 25.1317, lng: 121.7397, q: 'Keelung Railway Station' },
 };
 

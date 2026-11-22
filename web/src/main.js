@@ -114,7 +114,9 @@ function dayCosts(day) {
   });
   return rows;
 }
-const subTabs = cur => seg([['all', 'ภาพรวม'], ...DAYS.map(d => [d.day, d.day, `${WD[d.wd] || d.wd} ${dayDate(d).getDate()}`])], cur, 'data-day');
+const blk = (title, inner, sub = '') => `<div class="blk"><h2>${title}</h2>${sub ? `<p class="blk-sub">${sub}</p>` : ''}${inner}</div>`;
+const tile = (inner, cls = '') => `<div class="tile ${cls}">${inner}</div>`;
+const subTabs = cur => `<div class="segwrap"><div class="seg">${[['all', 'ภาพรวม'], ...DAYS.map(d => [d.day, d.day])].map(([v, t]) => `<button class="${v === cur ? 'on' : ''}" data-day="${v}">${t}</button>`).join('')}</div></div>`;
 function bindDay(root) {
   $$('[data-day]', root).forEach(b => b.onclick = () => { go('plan', b.dataset.day); });
   $$('[data-goto]', root).forEach(b => b.onclick = () => go(b.dataset.goto));
@@ -122,7 +124,7 @@ function bindDay(root) {
 let miniMap = null;
 const pinIcon = (label, cls = '') => L.divIcon({ className: '', iconSize: null, html: `<div class="pin ${cls}">${label}</div>` });
 const baseTiles = m => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Tiles &copy; Esri' }).addTo(m);
-const lineStyle = { color: '#1b1b19', weight: 2, opacity: .7, dashArray: '5 7' };
+const lineStyle = { color: '#0071e3', weight: 3, opacity: .85, dashArray: '1 7', lineCap: 'round' };
 function drawDayMap(el, stops) {
   const m = L.map(el, { scrollWheelZoom: false, dragging: !L.Browser.mobile });
   baseTiles(m);
@@ -136,47 +138,66 @@ function renderPlan() {
   if (miniMap) { miniMap.remove(); miniMap = null; }
   if (state.day === 'all') renderOverview(); else renderDay();
 }
+function daysLeft() {
+  const now = new Date();
+  if (now < TRIP_START) return { n: Math.ceil((TRIP_START - now) / 864e5), l: 'วันก่อนออกเดินทาง' };
+  if (now < TRIP_END) return { n: Math.floor((now - TRIP_START) / 864e5) + 1, l: 'วันของทริป' };
+  return { n: 0, l: 'จบทริปแล้ว' };
+}
 function renderOverview() {
   const done = store.get('tw2026-todo-v1') || {};
-  const urgent = TODO.flatMap(g => g.items).filter(x => x.due === 'ทันที' && !done[x.id]);
-  $('#tab-plan').innerHTML = subTabs('all') + `
-    <h1>ไต้หวัน 5 วัน 4 คืน</h1>
-    <p class="lead">16–20 ธ.ค. 2569 · 2 คน · ไม่เช่ารถ ใช้ HSR บัส MRT</p>
-    <dl class="kv">
-      <dt>ขาไป</dt><dd>VZ566 · BKK 01:50 → TPE 06:30 (T1)</dd>
-      <dt>ขากลับ</dt><dd>VZ569 · TPE 19:50 → BKK 22:50 (T1)</dd>
-      <dt>ที่พัก</dt><dd>อาลีซาน 16 · SML 17 · ไทเป 18–19</dd>
-      <dt>งบรวม</dt><dd>~฿${thb(costTotal())} สำหรับ 2 คน (ตั๋วเครื่องบินจองแล้ว)</dd>
-    </dl>
-    <h2>เส้นทาง</h2>
-    <div id="ovmap" class="mini"></div>
-    <p class="sub-note">เส้นประคือเส้นทาง H = ที่พัก A = สนามบิน · ตำแหน่งโดยประมาณ</p>
-    ${urgent.length ? `<h2>ต้องทำก่อน</h2>${urgent.map(x => `<div class="item"><b>${esc(x.t)}</b><div class="small">${esc(x.d)}</div></div>`).join('')}<button class="btn" data-goto="todo">เปิดรายการเตรียมตัว</button>` : ''}
-    <h2>แต่ละวัน</h2>
-    <div class="rows">${DAYS.map(d => {
-      const info = DAY_INFO[d.day], h = HOTELS[HOTEL_FOR_DAY[d.day]];
-      const cost = dayCosts(d.day).reduce((s, r) => s + r.v, 0);
-      return `<button class="row-link" data-day="${d.day}"><span class="rk">${d.day}</span><span class="rb"><b>${esc(dayLabel(d))} · ${esc(OVERVIEW[d.day])}</b><span>${esc(info.headline)}</span><span class="meta">${d.day === 'D5' ? 'บินกลับ 19:50' : 'นอน ' + esc(h.title.split(' · ')[0])} · ${info.book.length ? `ต้องจอง ${info.book.length} รายการ` : 'ไม่ต้องจองล่วงหน้า'} · ~฿${thb(cost)}</span></span></button>`; }).join('')}</div>
-    <h2>ต้องเช็คก่อนจอง</h2>
-    <ul class="ul">${NOTES.map(n => `<li>${esc(n)}</li>`).join('')}</ul>`;
+  const all = TODO.flatMap(g => g.items), nd = all.filter(x => done[x.id]).length;
+  const urgent = all.filter(x => x.due === 'ทันที' && !done[x.id]);
+  const total = costTotal(), dl = daysLeft();
+  const cats = {}; D.items.forEach((i, idx) => { cats[i.cat] = (cats[i.cat] || 0) + calc(i, idx).total; });
+  const catRows = Object.entries(cats).sort((a, b) => b[1] - a[1]), sub = Object.values(cats).reduce((a, b) => a + b, 0);
+  const R = 26, CIRC = 2 * Math.PI * R;
+  $('#tab-plan').innerHTML = `<div class="hero"><p class="eyebrow">16–20 ธ.ค. 2569 · 2 คน</p><h1>ไต้หวัน<br>5 วัน 4 คืน</h1><p class="sub">ไม่เช่ารถ ใช้ HSR บัส และ MRT</p>
+      <p class="cta"><button class="more" data-day="D1">ดูแผนรายวัน</button><button class="more" data-goto="cost">ดูงบ</button></p></div>
+    ${subTabs('all')}
+    <div class="bento">
+      <div class="w"><div class="wl">นับถอยหลัง</div><div class="wn">${dl.n}<small>วัน</small></div><div class="wd">${dl.l}</div></div>
+      <div class="w"><div class="wl">งบรวม</div><div class="wn">฿${thb(total)}</div><div class="wd">2 คน · คนละ ฿${thb(total / C.s.people)}</div></div>
+      <div class="w c2"><div class="wl">เที่ยวบิน · จองแล้ว</div>
+        <div class="wrow"><span>16 ธ.ค. VZ566</span><b>BKK 01:50 → TPE 06:30</b></div>
+        <div class="wrow"><span>20 ธ.ค. VZ569</span><b>TPE 19:50 → BKK 22:50</b></div>
+        <div class="wd">ทั้งสองเที่ยวใช้ Terminal 1 · ไม่มีสัมภาระโหลดฟรี</div></div>
+      <div class="w c2 flush"><div id="ovmap" class="mini"></div></div>
+      <div class="w c2"><div class="wl">ที่พัก 4 คืน</div>
+        <div class="wrow"><span>16 ธ.ค.</span><b>อาลีซาน</b></div>
+        <div class="wrow"><span>17 ธ.ค.</span><b>SML อีต้าเส้า</b></div>
+        <div class="wrow"><span>18–19 ธ.ค.</span><b>ไทเป ซีเหมินติง</b></div>
+        <div class="wd">ยังไม่ได้จอง · ดูตัวเลือกและราคาในหน้ารายวัน</div></div>
+      <div class="w"><div class="wl">เตรียมตัว</div>
+        <div class="hrow" style="margin-top:8px"><svg class="ring" viewBox="0 0 64 64"><circle cx="32" cy="32" r="${R}" fill="none" stroke="var(--line)" stroke-width="7"/><circle cx="32" cy="32" r="${R}" fill="none" stroke="var(--btn)" stroke-width="7" stroke-linecap="round" stroke-dasharray="${CIRC}" stroke-dashoffset="${CIRC * (1 - nd / all.length)}" transform="rotate(-90 32 32)"/></svg><div class="wn" style="margin:0;font-size:30px">${nd}/${all.length}</div></div>
+        <div class="wd">ข้อที่ทำแล้ว</div></div>
+      <div class="w"><div class="wl">อุณหภูมิปกติ ธ.ค.</div><div class="wn">0–21<small>°C</small></div><div class="wd">จู้ซานเช้ามืด 0–8° ไทเป 14–21° · ฝนบ่อย</div></div>
+      <div class="w c4"><div class="wl">เส้นทาง 5 วัน</div><div class="timeline">${DAYS.map(d => `<button class="tl-d" data-day="${d.day}"><div class="e">${d.day} · ${esc(WD[d.wd] || d.wd)} ${dayDate(d).getDate()}</div><div class="t">${esc(OVERVIEW[d.day])}</div><div class="s">${d.day === 'D5' ? 'บินกลับ 19:50' : 'นอน ' + esc(HOTELS[HOTEL_FOR_DAY[d.day]].title.split(' · ')[0])}</div></button>`).join('')}</div></div>
+      <div class="w c2"><div class="wl">งบแยกตามหมวด</div>${catRows.map(([k, v]) => `<div style="margin-top:12px"><div class="wrow" style="padding:0;border:0"><span style="color:var(--ink)">${esc(k)}</span><b>฿${thb(v)}</b></div><div class="bar1" style="width:${Math.max(1, v / sub * 100)}%"></div></div>`).join('')}</div>
+      <div class="w c2"><div class="wl">ต้องทำก่อน${urgent.length ? ` (${urgent.length})` : ''}</div>${urgent.length ? urgent.map(x => `<div class="wrow"><span style="color:var(--ink)">${esc(x.t)}</span></div>`).join('') : '<div class="wd">ไม่มีรายการเร่งด่วน</div>'}<button class="more" data-goto="todo" style="margin-top:12px;font-size:16px">เปิดรายการเตรียมตัว</button></div>
+    </div>
+    ${blk('แต่ละวัน', `<div class="stack">${DAYS.map(d => {
+      const info = DAY_INFO[d.day], cost = dayCosts(d.day).reduce((s, r) => s + r.v, 0);
+      return `<button class="day-card" data-day="${d.day}"><div class="e">${d.day} · ${esc(dayLabel(d))}</div><div class="t">${esc(OVERVIEW[d.day])}</div><div class="d">${esc(info.headline)}</div><div class="m">${info.book.length ? `ต้องจอง ${info.book.length} รายการ` : 'ไม่ต้องจองล่วงหน้า'} · ${info.schedule.length} ช่วงเวลา · ~฿${thb(cost)}</div><span class="go">ดูรายละเอียด</span></button>`; }).join('')}</div>`)}
+    ${blk('ต้องเช็คก่อนจอง', tile(`<ul class="ul">${NOTES.map(n => `<li>${esc(n)}</li>`).join('')}</ul>`))}`;
   bindDay($('#tab-plan'));
   const el = $('#ovmap'); if (!el) return;
   const m = L.map(el, { scrollWheelZoom: false, dragging: !L.Browser.mobile });
   baseTiles(m);
-  const R = k => resolveLoc(k);
+  const Rr = k => resolveLoc(k);
   const segs = [['TPE', 'HSR_TY', 'HSR_CY', 'ALI_STN'], ['ALI_STN', 'E2', 'SHUISHE', 'HOTEL_SML'], ['HOTEL_SML', 'HSR_TC', 'TPE_MAIN', 'B1', 'HOTEL_TPE'], ['HOTEL_TPE', 'KEELUNG_STN', 'D1', 'HOTEL_TPE'], ['HOTEL_TPE', 'A2', 'A1', 'TPE']];
   const pts = [];
-  segs.forEach(ks => { const ll = ks.map(R).filter(Boolean).map(s => [s.lat, s.lng]); L.polyline(ll, lineStyle).addTo(m); pts.push(...ll); });
-  [['HOTEL_ALI', 'H', true], ['HOTEL_SML', 'H', true], ['HOTEL_TPE', 'H', true], ['TPE', 'A', true]].forEach(([k, mk, sq]) => { const s = R(k); L.marker([s.lat, s.lng], { icon: pinIcon(mk, 'sq') }).bindTooltip(s.name).addTo(m); });
+  segs.forEach(ks => { const ll = ks.map(Rr).filter(Boolean).map(s => [s.lat, s.lng]); L.polyline(ll, lineStyle).addTo(m); pts.push(...ll); });
+  [['HOTEL_ALI', 'H'], ['HOTEL_SML', 'H'], ['HOTEL_TPE', 'H'], ['TPE', 'A']].forEach(([k, mk]) => { const s = Rr(k); L.marker([s.lat, s.lng], { icon: pinIcon(mk, 'sq') }).bindTooltip(s.name).addTo(m); });
   m.fitBounds(pts, { padding: [30, 30] });
   miniMap = m; setTimeout(() => m.invalidateSize(), 60);
 }
 function hotelBlock(hk, dayId) {
   const h = HOTELS[hk], l = resolveLoc(h.loc);
   return `<div class="small"><b style="color:var(--ink)">${esc(h.title)}</b>${(dayId === 'D4' || dayId === 'D5') ? ' · ที่พักเดียวกับคืนที่แล้ว' : ''}</div>
-    <p class="plain" style="margin:6px 0 14px">${esc(h.why)}</p>
-    ${h.picks.map((p, k) => `<div class="item"><b>${k + 1}. ${esc(p.n)}</b><div class="small">${esc(p.d)}</div><div class="small" style="color:var(--ink)">ราคา: ${esc(p.price)}</div><div class="small"><a href="${gmSearch(p.q)}" target="_blank" rel="noopener">ดูในแผนที่</a></div></div>`).join('')}
-    <p class="sub-note">คัดจากเว็บจองห้องและรีวิว ไม่ใช่การจัดอันดับทางการ ราคาเป็นตัวอย่างคนละวัน ไม่ใช่ราคาวันที่ไป ต้องกรอกวันที่เช็คเอง · <a href="${gmSearch(l.q)}" target="_blank" rel="noopener">ดูย่านนี้ในแผนที่</a></p>`;
+    <p class="plain" style="margin:6px 0 16px;font-size:15.5px">${esc(h.why)}</p>
+    ${h.picks.map((p, k) => `<div class="item"><b>${k + 1}. ${esc(p.n)}</b><div class="small">${esc(p.d)}</div><div class="price">ราคา: ${esc(p.price)}</div><div class="small"><a href="${gmSearch(p.q)}" target="_blank" rel="noopener">ดูในแผนที่</a></div></div>`).join('')}
+    <p class="note">คัดจากเว็บจองห้องและรีวิว ไม่ใช่การจัดอันดับทางการ ราคาเป็นตัวอย่างคนละวัน ไม่ใช่ราคาวันที่ไป ต้องกรอกวันที่เช็คเอง · <a href="${gmSearch(l.q)}" target="_blank" rel="noopener">ดูย่านนี้ในแผนที่</a></p>`;
 }
 function renderDay() {
   const d = DAYS.find(x => x.day === state.day), i = DAYS.indexOf(d), info = DAY_INFO[d.day];
@@ -196,38 +217,30 @@ function renderDay() {
     }
     return { ...s, l, n, from };
   });
-  $('#tab-plan').innerHTML = subTabs(d.day) + `
-    <h1>${esc(d.day)} · ${esc(dayLabel(d))}</h1>
-    <p class="lead">${esc(OVERVIEW[d.day])}</p>
-    <p style="margin-top:14px">${esc(info.headline)}</p>
-    <dl class="kv">
-      <dt>นอน</dt><dd>${esc(d.sleep)}</dd>
-      <dt>เวลา</dt><dd>เที่ยว ${fmtH(visit)} ชม. · เดินทาง ${fmtH(travel)} ชม. จากที่มี ${d.avail} ชม. (${status})</dd>
-      <dt>งบวันนี้</dt><dd>~฿${thb(ctot)} สำหรับ 2 คน ไม่รวมเผื่อ</dd>
-    </dl>
-    <h2>แผนที่</h2>
-    <div id="daymap" class="mini"></div>
-    <div class="stops">${stops.map(s => `<a href="${gmSearch(s.q)}" target="_blank" rel="noopener"><b>${s.mark}</b>${esc(s.name)}</a>`).join('')}</div>
-    <p class="sub-note">ตำแหน่งโดยประมาณ กดชื่อเพื่อเปิด Google Maps</p>
-    <h2>ตารางเวลา <span class="s">· เวลาเป็นค่าประมาณ</span></h2>
-    <div>${steps.map(s => `<div class="sr k-${s.k}"><div class="st">${esc(s.t)}</div><div><div class="stt">${esc(s.title)}</div>${s.d ? `<div class="sd">${esc(s.d)}</div>` : ''}
+  const main = `
+    ${blk('ตารางเวลา', tile(steps.map(s => `<div class="sr k-${s.k}"><div class="st">${esc(s.t)}</div><div><div class="stt">${esc(s.title)}</div>${s.d ? `<div class="sd">${esc(s.d)}</div>` : ''}
       ${(s.dur || s.cost || s.l) ? `<div class="meta">${[s.dur ? esc(s.dur) : '', s.cost ? esc(s.cost) : '', s.l ? `<a href="${gmSearch(s.l.q)}" target="_blank" rel="noopener">แผนที่ ${s.n}</a>` : '', s.l && s.from ? `<a href="${gmDir(s.from.q, s.l.q)}" target="_blank" rel="noopener">เส้นทางจากจุดก่อนหน้า</a>` : ''].filter(Boolean).join('<i>·</i>')}</div>` : ''}
-      ${s.tip ? `<div class="tip">${esc(s.tip)}</div>` : ''}</div></div>`).join('')}</div>
-    <p class="sub-note">${esc(d.note)}</p>
-    <h2>ที่พักแนะนำ</h2>${hotelBlock(HOTEL_FOR_DAY[d.day], d.day)}
-    ${info.book.length ? `<h2>ต้องจองหรือซื้อ</h2>${info.book.map(b => `<div class="item"><b>${esc(b.t)}</b><span class="due">${esc(b.due)}</span><div class="small">${esc(b.d)}</div></div>`).join('')}<button class="btn" data-goto="todo">เปิดรายการเตรียมตัว</button>` : ''}
-    ${places.length ? `<h2>สถานที่</h2><div class="strip">${places.map(p => photo(p)).join('')}</div>` : ''}
-    <h2>อากาศและการเตรียมตัว</h2>
-    <dl class="kv" style="margin-top:0"><dt>อากาศ</dt><dd>${esc(d.wx)}</dd><dt>เตรียม</dt><dd>${esc(d.pack)}</dd><dt>ถ้าฝนตก</dt><dd>${esc(d.rain)}</dd></dl>
-    <h2>แผนสำรอง</h2><ul class="ul">${info.backup.map(b => `<li>${esc(b)}</li>`).join('')}</ul>
-    ${info.food.length ? `<h2>ของกินที่น่าลอง</h2><p class="plain">${info.food.map(esc).join(' · ')}</p><p class="sub-note">ข้อแนะนำทั่วไป ไม่ได้เช็คร้านหรือจองไว้</p>` : ''}
-    <h2>การเดินทาง</h2>
-    ${legs.map(l => `<div class="item"><div style="display:flex;justify-content:space-between;gap:12px"><b>${esc(l.frm)} → ${esc(l.to)}</b><span class="small" style="white-space:nowrap">${l.min >= 60 ? fmtH(l.min / 60) + ' ชม.' : l.min + ' น.'}</span></div><div class="small">${esc(l.mode)}${l.km ? ` · ${l.km} กม.` : ''}${l.note ? ` · ${esc(l.note)}` : ''}</div></div>`).join('')}
-    <h2>ค่าใช้จ่ายวันนี้</h2>
-    ${costs.map(r => `<div class="line"><span>${esc(r.name)}</span><span>฿${thb(r.v)}</span></div>`).join('') || '<p class="plain">ไม่มีรายการ</p>'}
-    <div class="line" style="border-top:1px solid var(--line);margin-top:4px"><b>รวม</b><b>฿${thb(ctot)}</b></div>
-    <p class="sub-note">ตั๋วเครื่องบิน สัมภาระ eSIM ประกัน ไม่ผูกกับวัน · แก้ราคาได้ที่แท็บงบ</p>
-    <div class="pn">${i > 0 ? `<button data-day="${DAYS[i - 1].day}">← ${DAYS[i - 1].day}</button>` : '<button data-day="all">← ภาพรวม</button>'}${i < DAYS.length - 1 ? `<button data-day="${DAYS[i + 1].day}">${DAYS[i + 1].day} →</button>` : '<button data-day="all">ภาพรวม →</button>'}</div>`;
+      ${s.tip ? `<div class="tip">${esc(s.tip)}</div>` : ''}</div></div>`).join('') + `<p class="note">${esc(d.note)} · เวลาทั้งหมดเป็นค่าประมาณ</p>`))}
+    ${blk('ที่พักแนะนำ', tile(hotelBlock(HOTEL_FOR_DAY[d.day], d.day)))}
+    ${info.book.length ? blk('ต้องจองหรือซื้อ', tile(info.book.map(b => `<div class="item"><b>${esc(b.t)}</b><span class="due">${esc(b.due)}</span><div class="small">${esc(b.d)}</div></div>`).join('') + '<button class="more" data-goto="todo" style="margin-top:14px;font-size:16px">เปิดรายการเตรียมตัว</button>')) : ''}
+    ${places.length ? blk('สถานที่', `<div class="strip">${places.map(p => photo(p)).join('')}</div>`) : ''}
+    ${blk('การเดินทาง', tile(legs.map(l => `<div class="item"><div style="display:flex;justify-content:space-between;gap:12px"><b>${esc(l.frm)} → ${esc(l.to)}</b><span class="small" style="white-space:nowrap">${l.min >= 60 ? fmtH(l.min / 60) + ' ชม.' : l.min + ' น.'}</span></div><div class="small">${esc(l.mode)}${l.km ? ` · ${l.km} กม.` : ''}${l.note ? ` · ${esc(l.note)}` : ''}</div></div>`).join('')))}`;
+  const aside = `
+    ${blk('แผนที่วันนี้', `<div class="tile flush"><div id="daymap" class="mini"></div></div><div class="stops">${stops.map(s => `<a href="${gmSearch(s.q)}" target="_blank" rel="noopener"><b>${s.mark}</b>${esc(s.name)}</a>`).join('')}</div><p class="note">ตำแหน่งโดยประมาณ กดชื่อเพื่อเปิด Google Maps</p>`)}
+    ${blk('อากาศและการเตรียมตัว', tile(`<dl class="kv" style="grid-template-columns:78px 1fr;font-size:15.5px"><dt>อากาศ</dt><dd>${esc(d.wx)}</dd><dt>เตรียม</dt><dd>${esc(d.pack)}</dd><dt>ถ้าฝนตก</dt><dd>${esc(d.rain)}</dd></dl>`))}
+    ${blk('แผนสำรอง', tile(`<ul class="ul">${info.backup.map(b => `<li>${esc(b)}</li>`).join('')}</ul>`))}
+    ${info.food.length ? blk('ของกินที่น่าลอง', tile(`<div>${info.food.map(f => `<span class="chip">${esc(f)}</span>`).join('')}</div><p class="note" style="margin-top:6px">ข้อแนะนำทั่วไป ไม่ได้เช็คร้านหรือจองไว้</p>`)) : ''}
+    ${blk('ค่าใช้จ่ายวันนี้', tile(costs.map(r => `<div class="line"><span>${esc(r.name)}</span><span>฿${thb(r.v)}</span></div>`).join('') + `<div class="line"><b>รวม</b><b>฿${thb(ctot)}</b></div><p class="note">ไม่รวมตั๋วเครื่องบิน สัมภาระ eSIM ประกัน · แก้ราคาได้ที่แท็บงบ</p>`))}`;
+  $('#tab-plan').innerHTML = subTabs(d.day) + `
+    <div class="hero" style="padding:28px 0 20px;text-align:left"><p class="eyebrow">${esc(d.day)} · ${esc(dayLabel(d))}</p><h1 style="font-size:40px">${esc(OVERVIEW[d.day])}</h1><p class="sub" style="font-size:19px">${esc(info.headline)}</p></div>
+    <div class="stat-grid">
+      <div class="stat"><b>${fmtH(visit)}<small style="font-size:16px"> ชม.</small></b><span>เที่ยว · ${status}</span></div>
+      <div class="stat"><b>${fmtH(travel)}<small style="font-size:16px"> ชม.</small></b><span>เดินทาง · จากที่มี ${d.avail} ชม.</span></div>
+      <div class="stat"><b>฿${thb(ctot)}</b><span>งบวันนี้ 2 คน</span></div>
+      <div class="stat"><b style="font-size:20px;line-height:1.25">${esc(d.sleep.split('(')[0].trim())}</b><span>นอน</span></div>
+    </div>
+    <div class="cols"><div class="main">${main}</div><div class="aside">${aside}</div></div>
+    <div class="pn">${i > 0 ? `<button data-day="${DAYS[i - 1].day}">‹ ${DAYS[i - 1].day}</button>` : '<button data-day="all">‹ ภาพรวม</button>'}${i < DAYS.length - 1 ? `<button data-day="${DAYS[i + 1].day}">${DAYS[i + 1].day} ›</button>` : '<button data-day="all">ภาพรวม ›</button>'}</div>`;
   bindDay($('#tab-plan'));
   drawDayMap($('#daymap'), stops);
 }
@@ -265,7 +278,7 @@ function drawMap() {
 /* ---------- places ---------- */
 const F = { q: '', g: 'all', d: 'all' };
 function renderPlaces() {
-  $('#tab-places').innerHTML = `<h1>สถานที่</h1><p class="lead">${P.length} แห่ง · กดรูปเพื่อดูรายละเอียด</p>
+  $('#tab-places').innerHTML = `<div class="hero" style="text-align:left;padding:40px 0 0"><h1>สถานที่</h1><p class="sub">${P.length} แห่ง · กดรูปเพื่อดูรายละเอียด</p></div>
     <div class="filters" style="margin-top:18px"><input id="q" placeholder="ค้นหา เช่น น้ำพุร้อน ตลาดกลางคืน" value="${esc(F.q)}">
       <select id="fg"><option value="all">ทุกโซน</option>${Object.entries(GROUP_SHORT).map(([k, v]) => `<option value="${k}" ${F.g === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
       <select id="fd"><option value="all">ทุกวัน</option>${DAYS.map(d => `<option value="${d.day}" ${F.d === d.day ? 'selected' : ''}>${d.day}</option>`).join('')}<option value="none" ${F.d === 'none' ? 'selected' : ''}>ยังไม่วาง</option></select></div>
@@ -302,20 +315,17 @@ function renderCost() {
   const flight = rows.find(r => r.i.item.startsWith('ตั๋วเครื่องบิน'));
   const sums = cats.map(c => ({ c, v: rows.filter(r => r.i.cat === c).reduce((a, r) => a + r.total, 0) })).sort((a, b) => b.v - a.v);
   const fld = (k, label, step) => `<div><label>${label}</label><input type="number" inputmode="decimal" step="${step}" data-s="${k}" value="${s[k]}"></div>`;
-  $('#tab-cost').innerHTML = `<h1>งบ</h1><p class="lead">รวมเผื่อ ${Math.round(s.buffer * 100)}% แล้ว</p>
-    <div class="total">฿${thb(total)}</div>
-    <div style="margin-top:12px"><div class="line"><span>ต่อคน</span><b>฿${thb(total / s.people)}</b></div>
-    <div class="line"><span>ต่อคน ไม่รวมตั๋วเครื่องบิน</span><b>฿${thb((total - flight.total * (1 + s.buffer)) / s.people)}</b></div>
-    <div class="line"><span>ห้องพัก</span><b>${Math.ceil(s.people / 2)} ห้อง</b></div></div>
-    <h2>แยกตามหมวด</h2>
-    ${sums.map(x => `<div style="margin:10px 0"><div class="line" style="padding:0"><span>${esc(x.c)}</span><b>฿${thb(x.v)}</b></div><div class="bar1" style="width:${Math.max(1, x.v / sub * 100)}%"></div></div>`).join('')}
-    <h2>ตั้งค่า</h2>
-    <div class="settings">${fld('people', 'จำนวนคน', 1)}${fld('rate', 'บาท ต่อ 1 TWD', 0.01)}${fld('food', 'อาหาร TWD/คน/วัน', 50)}${fld('buffer', 'เผื่อ (0.1 = 10%)', 0.05)}</div>
-    <p class="sub-note">ช่องสีครีมแก้ได้ ค่าที่แก้จำไว้ในเบราว์เซอร์เครื่องนี้ · ห้องพักคิด 2 คน/ห้อง</p>
-    <button class="btn" id="resetCost">คืนค่าเริ่มต้น</button>
-    ${cats.map(c => { const rs = rows.filter(r => r.i.cat === c); return `<h2>${esc(c)} <span class="s">· ฿${thb(rs.reduce((a, r) => a + r.total, 0))}</span></h2>${rs.map(r => `<div class="crow ${r.i.item.includes('จองแล้ว') ? 'booked' : ''}"><div class="nm">${esc(r.i.item.replace(' ✅ จองแล้ว', ''))}</div>${r.i.note ? `<div class="small">${esc(r.i.note)}</div>` : ''}
-      <div class="edit">${r.i.kind === 'food' ? `<span class="small">${r.price} ${r.i.cur}/คน/วัน</span>` : `<div><label>${r.i.cur} ต่อ${esc(r.i.per)}</label><input type="number" inputmode="decimal" data-i="${r.idx}" data-f="price" value="${r.price}"></div>`}<div><label>จำนวน</label><input type="number" inputmode="decimal" data-i="${r.idx}" data-f="qty" value="${r.qty}"></div><span class="tot">฿${thb(r.total)}</span></div></div>`).join('')}`; }).join('')}
-    <p class="sub-note" style="margin-top:20px">ราคาส่วนใหญ่เป็นค่าประมาณ ยังไม่ได้เช็คราคาจริง · ตั๋วเครื่องบินจองแล้ว 14,090 บาท (2 คน) · ค่าสัมภาระโหลดยังเป็นค่าสมมติ</p>`;
+  $('#tab-cost').innerHTML = `<div class="hero" style="text-align:left;padding:40px 0 8px"><p class="eyebrow">รวมเผื่อ ${Math.round(s.buffer * 100)}% แล้ว</p><h1>งบ</h1><div class="total">฿${thb(total)}</div><p class="sub">2 คน · คนละ ฿${thb(total / s.people)}</p></div>
+    <div class="bento">
+      <div class="w"><div class="wl">ต่อคน ไม่รวมตั๋วบิน</div><div class="wn" style="font-size:30px">฿${thb((total - flight.total * (1 + s.buffer)) / s.people)}</div></div>
+      <div class="w"><div class="wl">ห้องพัก</div><div class="wn" style="font-size:30px">${Math.ceil(s.people / 2)}<small>ห้อง</small></div></div>
+      <div class="w c2"><div class="wl">แยกตามหมวด</div>${sums.map(x => `<div class="cat"><div class="wrow" style="padding:0;border:0"><span style="color:var(--ink)">${esc(x.c)}</span><b>฿${thb(x.v)}</b></div><div class="bar1" style="width:${Math.max(1, x.v / sub * 100)}%"></div></div>`).join('')}</div>
+    </div>
+    ${blk('ตั้งค่า', tile(`<div class="settings">${fld('people', 'จำนวนคน', 1)}${fld('rate', 'บาท ต่อ 1 TWD', 0.01)}${fld('food', 'อาหาร TWD/คน/วัน', 50)}${fld('buffer', 'เผื่อ (0.1 = 10%)', 0.05)}</div>
+      <p class="note">แก้ได้ ค่าที่แก้จำไว้ในเบราว์เซอร์เครื่องนี้ · ห้องพักคิด 2 คน/ห้อง</p><button class="btn ghost" id="resetCost">คืนค่าเริ่มต้น</button>`))}
+    ${cats.map(c => { const rs = rows.filter(r => r.i.cat === c); return blk(`${esc(c)} <span style="color:var(--muted);font-weight:500">฿${thb(rs.reduce((a, r) => a + r.total, 0))}</span>`, tile(rs.map(r => `<div class="crow ${r.i.item.includes('จองแล้ว') ? 'booked' : ''}"><div class="nm">${esc(r.i.item.replace(' ✅ จองแล้ว', ''))}</div>${r.i.note ? `<div class="small">${esc(r.i.note)}</div>` : ''}
+      <div class="edit">${r.i.kind === 'food' ? `<span class="small">${r.price} ${r.i.cur}/คน/วัน</span>` : `<div><label>${r.i.cur} ต่อ${esc(r.i.per)}</label><input type="number" inputmode="decimal" data-i="${r.idx}" data-f="price" value="${r.price}"></div>`}<div><label>จำนวน</label><input type="number" inputmode="decimal" data-i="${r.idx}" data-f="qty" value="${r.qty}"></div><span class="tot">฿${thb(r.total)}</span></div></div>`).join(''))); }).join('')}
+    <p class="note" style="margin-top:28px">ราคาส่วนใหญ่เป็นค่าประมาณ ยังไม่ได้เช็คราคาจริง · ตั๋วเครื่องบินจองแล้ว 14,090 บาท (2 คน) · ค่าสัมภาระโหลดยังเป็นค่าสมมติ</p>`;
   $$('#tab-cost input').forEach(inp => inp.onchange = () => {
     const v = parseFloat(inp.value);
     if (!isFinite(v) || v < 0) { renderCost(); return; }
@@ -331,9 +341,9 @@ const TODO_KEY = 'tw2026-todo-v1';
 let done = store.get(TODO_KEY) || {};
 function renderTodo() {
   const all = TODO.flatMap(g => g.items), n = all.filter(i => done[i.id]).length;
-  $('#tab-todo').innerHTML = `<h1>เตรียมตัว</h1><p class="lead">ทำแล้ว ${n} จาก ${all.length} ข้อ</p><div class="prog"><i style="width:${n / all.length * 100}%"></i></div>` +
-    TODO.map(g => `<h2>${esc(g.group.replace(/^[^\wก-๙]+/, ''))}</h2>${g.items.map(i => `<label class="todo ${done[i.id] ? 'done' : ''}"><input type="checkbox" data-id="${i.id}" ${done[i.id] ? 'checked' : ''}><span><span class="tt">${esc(i.t)}<span class="due">${esc(i.due)}</span></span>${i.d ? `<span class="dd">${esc(i.d)}</span>` : ''}</span></label>`).join('')}`).join('') +
-    '<p class="sub-note">ติ๊กเมื่อทำเสร็จ · จำไว้ในเบราว์เซอร์เครื่องนี้</p>';
+  $('#tab-todo').innerHTML = `<div class="hero" style="text-align:left;padding:40px 0 0"><p class="eyebrow">ทำแล้ว ${n} จาก ${all.length} ข้อ</p><h1>เตรียมตัว</h1><div class="prog"><i style="width:${n / all.length * 100}%"></i></div></div>` +
+    TODO.map(g => blk(esc(g.group.replace(/^[^\wก-๙]+/, '')), tile(g.items.map(i => `<label class="todo ${done[i.id] ? 'done' : ''}"><input type="checkbox" data-id="${i.id}" ${done[i.id] ? 'checked' : ''}><span><span class="tt">${esc(i.t)}<span class="due">${esc(i.due)}</span></span>${i.d ? `<span class="dd">${esc(i.d)}</span>` : ''}</span></label>`).join('')))).join('') +
+    '<p class="note" style="margin-top:28px">ติ๊กเมื่อทำเสร็จ · จำไว้ในเบราว์เซอร์เครื่องนี้</p>';
   $$('#tab-todo input').forEach(c => c.onchange = () => { done[c.dataset.id] = c.checked; store.set(TODO_KEY, done); renderTodo(); });
 }
 

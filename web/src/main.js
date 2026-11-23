@@ -7,18 +7,12 @@ import { DAY_INFO, COST_DAYS, LOCS, HOTELS, HOTEL_FOR_DAY } from './days.js';
 import { TRANSPORT, PACKS, WHEN, STATUS, LINKS } from './transport.js';
 import { FOODS, FZONES, FTYPES } from './foods.js';
 import { HOTEL_LIST, HZONES, HTYPES } from './hotels.js';
+import { $, $$, esc, store, thb, fmtH, enc, gmSearch, gmDir, seg, blk, tile } from './util.js';
+import { pinIcon, baseTiles, addFullscreen, DAYC, dayColor, addLeg, spreadPins } from './maplib.js';
+import { nowTW, todayInfo, stepNow } from './today.js';
+import { shareState, readShared } from './sync.js';
 
 /* ---------- helpers ---------- */
-const $ = (s, r = document) => r.querySelector(s);
-const $$ = (s, r = document) => [...r.querySelectorAll(s)];
-const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const store = {
-  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* ignore */ } },
-};
-const thb = n => Math.round(n).toLocaleString('th-TH');
-const fmtH = h => (Math.round(h * 10) / 10).toFixed(1);
-const enc = encodeURIComponent;
 const img = p => (p.img ? import.meta.env.BASE_URL + p.img : null);
 const P = D.places, DAYS = D.days, LEGS = D.legs;
 const byCode = Object.fromEntries(P.map(p => [p.code, p]));
@@ -43,30 +37,25 @@ const inCat = (p, c) => tagsOf(p).some(x => c[2].includes(x));
 const dayDate = d => new Date(d.date + 'T00:00:00');
 const dayLabel = d => `${d.wd} ${dayDate(d).getDate()} ธ.ค.`;
 const WD = { 'พุธ': 'พุธ', 'พฤหัสบดี': 'พฤ.', 'ศุกร์': 'ศุกร์', 'เสาร์': 'เสาร์', 'อาทิตย์': 'อา.' };
-const gmSearch = q => 'https://www.google.com/maps/search/?api=1&query=' + enc(q);
-const gmDir = (a, b) => `https://www.google.com/maps/dir/?api=1&origin=${enc(a)}&destination=${enc(b)}&travelmode=transit`;
 function resolveLoc(c) {
   if (!c) return null;
   if (byCode[c]) { const p = byCode[c]; return { key: c, name: p.name, lat: p.lat, lng: p.lng, q: p.search + ' Taiwan' }; }
   return LOCS[c] ? { key: c, ...LOCS[c] } : null;
 }
-const seg = (items, cur, attr) => `<div class="seg">${items.map(([v, t, s]) => `<button class="${v === cur ? 'on' : ''}" ${attr}="${v}">${t}${s ? `<small>${s}</small>` : ''}</button>`).join('')}</div>`;
 
 /* ---------- countdown ---------- */
 const TRIP_START = new Date('2026-12-16T00:00:00+08:00');
 const TRIP_END = new Date('2026-12-21T00:00:00+08:00');
 (() => {
-  const now = new Date(), el = $('#countdown');
+  const now = nowTW(), el = $('#countdown');
   el.textContent = now < TRIP_START ? `อีก ${Math.ceil((TRIP_START - now) / 864e5)} วัน` : now < TRIP_END ? `วันที่ ${Math.floor((now - TRIP_START) / 864e5) + 1} ของทริป` : 'จบทริปแล้ว';
 })();
 
 /* ---------- state / routing ---------- */
 const TABS = ['plan', 'map', 'places', 'food', 'hotels', 'transport', 'cost', 'todo'];
 let state = { tab: 'plan', day: 'all', anchor: null, focus: null };
-(() => {
-  const now = new Date();
-  if (now >= TRIP_START && now < TRIP_END) state.day = DAYS[Math.min(4, Math.floor((now - TRIP_START) / 864e5))].day;
-})();
+const TODAY = todayInfo(DAYS);
+if (TODAY) state.day = TODAY.day;
 function parseHash() {
   const [t, d] = (location.hash || '').slice(1).split('/');
   if (TABS.includes(t)) state.tab = t;
@@ -156,84 +145,12 @@ function dayCosts(day) {
   });
   return rows;
 }
-const blk = (title, inner, sub = '') => `<div class="blk"><h2>${title}</h2>${sub ? `<p class="blk-sub">${sub}</p>` : ''}${inner}</div>`;
-const tile = (inner, cls = '') => `<div class="tile ${cls}">${inner}</div>`;
 const subTabs = cur => `<div class="segwrap"><div class="seg">${[['all', 'ภาพรวม'], ...DAYS.map(d => [d.day, d.day])].map(([v, t]) => `<button class="${v === cur ? 'on' : ''}" data-day="${v}">${t}</button>`).join('')}</div></div>`;
 function bindDay(root) {
   $$('[data-day]', root).forEach(b => b.onclick = () => { go('plan', b.dataset.day); });
   $$('[data-goto]', root).forEach(b => b.onclick = () => go(b.dataset.goto));
 }
 let miniMap = null;
-const pinIcon = (label, cls = '', color = '') => L.divIcon({ className: '', iconSize: null, html: `<div class="pin ${cls}" ${color ? `style="--pc:${color}"` : ''}>${label}</div>` });
-const baseTiles = m => L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Tiles &copy; Esri' }).addTo(m);
-
-// ปุ่มดูแผนที่เต็มจอ (ใช้ CSS ไม่พึ่ง Fullscreen API เพื่อให้ทำงานบน iPhone ได้)
-const FS_OPEN = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
-const FS_CLOSE = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
-function addFullscreen(m) {
-  const el = m.getContainer();
-  const orig = { drag: m.dragging.enabled(), wheel: m.scrollWheelZoom.enabled() };
-  let on = false, btn;
-  const toggle = (force) => {
-    on = typeof force === 'boolean' ? force : !on;
-    el.classList.toggle('mapfs', on);
-    document.body.classList.toggle('no-scroll', on);
-    btn.innerHTML = on ? FS_CLOSE : FS_OPEN;
-    btn.setAttribute('aria-label', on ? 'ออกจากเต็มจอ' : 'ดูเต็มจอ');
-    if (on) { m.dragging.enable(); m.scrollWheelZoom.enable(); }
-    else { if (!orig.drag) m.dragging.disable(); if (!orig.wheel) m.scrollWheelZoom.disable(); }
-    setTimeout(() => { m.invalidateSize(); if (m._spread) m._spread(); }, 60);
-  };
-  const C = L.Control.extend({
-    options: { position: 'topright' },
-    onAdd() {
-      btn = L.DomUtil.create('button', 'fsbtn');
-      btn.type = 'button'; btn.innerHTML = FS_OPEN; btn.setAttribute('aria-label', 'ดูเต็มจอ');
-      L.DomEvent.disableClickPropagation(btn);
-      btn.onclick = () => toggle();
-      return btn;
-    },
-  });
-  m.addControl(new C());
-  const onKey = e => { if (e.key === 'Escape' && on) toggle(false); };
-  document.addEventListener('keydown', onKey);
-  m.on('unload', () => { document.removeEventListener('keydown', onKey); document.body.classList.remove('no-scroll'); });
-}
-const DAYC = { D1: '#0071e3', D2: '#af52de', D3: '#ff2d55', D4: '#ff9500', D5: '#34c759' };
-const dayColor = d => DAYC[d] || '#8a949b';
-const MERC = L.Projection.SphericalMercator;
-const bearing = (a, b) => { const p = MERC.project(L.latLng(a)), q = MERC.project(L.latLng(b)); return Math.atan2(q.x - p.x, q.y - p.y) * 180 / Math.PI; };
-// เส้นทางจริงระหว่างสองจุด พร้อมลูกศรบอกทิศ (off = เลื่อนเส้นออกข้างเมื่อเป็นขากลับทางเดิม)
-function addLeg(target, a, b, color, off = 0, w = 4, op = .9) {
-  let A = [a.lat, a.lng], B = [b.lat, b.lng];
-  if (off) { const dx = B[1] - A[1], dy = B[0] - A[0], len = Math.hypot(dx, dy) || 1, ox = -dy / len * off, oy = dx / len * off; A = [A[0] + oy, A[1] + ox]; B = [B[0] + oy, B[1] + ox]; }
-  L.polyline([A, B], { color, weight: w, opacity: op, lineCap: 'round' }).addTo(target);
-  const mid = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
-  L.marker(mid, { icon: L.divIcon({ className: '', iconSize: [16, 16], iconAnchor: [8, 8], html: `<div class="arr" style="color:${color};transform:rotate(${bearing(A, B)}deg)">▲</div>` }), interactive: false, keyboard: false }).addTo(target);
-}
-// วางหมุดเลข กระจายออกจากกันเมื่อซ้อนกันบนหน้าจอ (คำนวณใหม่ทุกครั้งที่ซูม)
-function spreadPins(m, group, items) {
-  const draw = () => {
-    group.clearLayers();
-    const pts = items.map(it => m.latLngToContainerPoint([it.lat, it.lng]));
-    const clusters = [];
-    items.forEach((it, i) => {
-      const c = clusters.find(cl => Math.hypot(pts[cl[0]].x - pts[i].x, pts[cl[0]].y - pts[i].y) < 24);
-      if (c) c.push(i); else clusters.push([i]);
-    });
-    clusters.forEach(c => c.forEach((i, k) => {
-      let dx = 0, dy = 0;
-      if (c.length > 1) { const ang = (k / c.length) * 2 * Math.PI - Math.PI / 2, R = Math.max(18, c.length * 30 / (2 * Math.PI)); dx = Math.cos(ang) * R; dy = Math.sin(ang) * R; }
-      const it = items[i];
-      const icon = L.divIcon({ className: '', iconSize: [28, 28], iconAnchor: [14 - dx, 14 - dy], html: `<div class="pin ${it.cls || ''}" ${it.color ? `style="--pc:${it.color}"` : ''}>${it.label}</div>` });
-      const mk = L.marker([it.lat, it.lng], { icon }).bindTooltip(it.tip).addTo(group);
-      if (it.click) mk.on('click', it.click);
-    }));
-  };
-  draw();
-  if (m._spread) m.off('zoomend', m._spread);
-  m._spread = draw; m.on('zoomend', draw);
-}
 function drawDayMap(el, stops, color) {
   const m = L.map(el, { scrollWheelZoom: false, dragging: !L.Browser.mobile });
   baseTiles(m);
@@ -276,7 +193,7 @@ function renderPlan() {
   if (state.day === 'all') renderOverview(); else renderDay();
 }
 function daysLeft() {
-  const now = new Date();
+  const now = nowTW();
   if (now < TRIP_START) return { n: Math.ceil((TRIP_START - now) / 864e5), l: 'วันก่อนออกเดินทาง' };
   if (now < TRIP_END) return { n: Math.floor((now - TRIP_START) / 864e5) + 1, l: 'วันของทริป' };
   return { n: 0, l: 'จบทริปแล้ว' };
@@ -290,7 +207,7 @@ function renderOverview() {
   const catRows = Object.entries(cats).sort((a, b) => b[1] - a[1]), sub = Object.values(cats).reduce((a, b) => a + b, 0);
   const R = 26, CIRC = 2 * Math.PI * R;
   $('#tab-plan').innerHTML = `<div class="hero"><p class="eyebrow">16–20 ธ.ค. 2569 · 2 คน</p><h1>ไต้หวัน<br>5 วัน 4 คืน</h1><p class="sub">ไม่เช่ารถ ใช้ HSR บัส และ MRT</p>
-      <p class="cta"><button class="more" data-day="D1">ดูแผนรายวัน</button><button class="more" data-places="plan">ดูสถานที่ในแผน</button><button class="more" data-foods="plan">ดูร้านอาหาร</button><button class="more" data-hotels="plan">ดูที่พัก</button><button class="more" data-goto="transport">ดูตั๋วและการเดินทาง</button><button class="more" data-goto="cost">ดูงบ</button></p></div>
+      <p class="cta">${TODAY ? `<button class="btn" data-day="${TODAY.day}" style="margin:0 8px 0 0">วันนี้ ${TODAY.day} ›</button>` : ''}<button class="more" data-day="D1">ดูแผนรายวัน</button><button class="more" data-places="plan">ดูสถานที่ในแผน</button><button class="more" data-foods="plan">ดูร้านอาหาร</button><button class="more" data-hotels="plan">ดูที่พัก</button><button class="more" data-goto="transport">ดูตั๋วและการเดินทาง</button><button class="more" data-goto="cost">ดูงบ</button></p></div>
     ${subTabs('all')}
     <div class="bento">
       <div class="w"><div class="wl">นับถอยหลัง</div><div class="wn">${dl.n}<small>วัน</small></div><div class="wd">${dl.l}</div></div>
@@ -360,15 +277,18 @@ function renderDay() {
   const dayTr = TRANSPORT.filter(x => x.d === d.day);
   const dayFoods = FOODS.filter(x => x.day === d.day);
   const { steps, stops } = computeSteps(d);
+  const live = TODAY && TODAY.day === d.day ? { ...TODAY, ...stepNow(steps, TODAY.min) } : null;
+  const rowCls = k => !live ? '' : k === live.cur ? ' now' : k === live.next ? ' next' : k < live.cur ? ' past' : '';
+  const liveBar = live ? `<div class="live"><span class="dot"></span><div><div class="lt">วันนี้ · เวลาไต้หวัน ${live.hm}</div>${live.cur >= 0 ? `<div><b>ตอนนี้</b> ${esc(steps[live.cur].title)}</div>` : '<div>ยังไม่ถึงกิจกรรมแรกของวัน</div>'}${live.next >= 0 ? `<div class="small"><b>ถัดไป ${esc(steps[live.next].t)}</b> ${esc(steps[live.next].title)}</div>` : ''}</div></div>` : '';
   const main = `
-    ${blk('ตารางเวลา', tile(steps.map(s => `<div class="sr k-${s.k}"><div class="st">${esc(s.t)}</div><div><div class="stt">${esc(s.title)}</div>${s.d ? `<div class="sd">${esc(s.d)}</div>` : ''}
+    ${blk('ตารางเวลา', liveBar + tile(steps.map((s, k) => `<div class="sr k-${s.k}${rowCls(k)}"><div class="st">${esc(s.t)}</div><div><div class="stt">${esc(s.title)}</div>${s.d ? `<div class="sd">${esc(s.d)}</div>` : ''}
       ${(s.dur || s.cost || s.l || (s.k === 'eat' && dayFoods.length)) ? `<div class="meta">${[s.dur ? esc(s.dur) : '', s.cost ? esc(s.cost) : '', s.k === 'eat' && dayFoods.length ? `<button class="lnk" data-foods="${d.day}">ดูร้านแนะนำ</button>` : '', s.l ? `<a href="${gmSearch(s.l.q)}" target="_blank" rel="noopener">แผนที่ ${s.n}</a>` : '', s.l && s.from ? `<a href="${gmDir(s.from.q, s.l.q)}" target="_blank" rel="noopener">เส้นทางจากจุดก่อนหน้า</a>` : ''].filter(Boolean).join('<i>·</i>')}</div>` : ''}
       ${s.tip ? `<div class="tip">${esc(s.tip)}</div>` : ''}</div></div>`).join('') + `<p class="note">${esc(d.note)} · เวลาทั้งหมดเป็นค่าประมาณ</p>`))}
     ${blk('ที่พักแนะนำ', tile(hotelBlock(HOTEL_FOR_DAY[d.day], d.day)))}
     ${info.book.length ? blk('ต้องจองหรือซื้อ', tile(info.book.map(b => `<div class="item"><b>${esc(b.t)}</b><span class="due">${esc(b.due)}</span><div class="small">${esc(b.d)}</div></div>`).join('') + '<button class="more" data-goto="todo" style="margin-top:14px;font-size:16px">เปิดรายการเตรียมตัว</button>')) : ''}
     ${places.length ? blk('สถานที่', `<div class="strip">${places.map(p => photo(p)).join('')}</div><button class="more" data-places="${d.day}" style="margin-top:12px;font-size:16px">ดูในแท็บสถานที่</button>`) : ''}
     ${dayFoods.length ? blk('ร้านอาหารแนะนำวันนี้', tile(dayFoods.map(x => `<button class="item trlink" data-foods="${d.day}"><b>${esc(x.n)}</b> <span class="small">· ${esc(x.meal)}</span><div class="small">${esc(x.dish)} ${stTag(x.s)}</div></button>`).join('') + `<button class="more" data-foods="${d.day}" style="margin-top:12px;font-size:16px">ดูทั้งหมดในแท็บร้านอาหาร</button>`), 'ร้านที่เลือกให้เข้ากับเส้นทางและช่วงเวลาของวัน · เช็คเวลาเปิดก่อนไป') : ''}
-    ${dayTr.length ? blk('ตั๋วและวิธีซื้อ', tile(dayTr.map((x, k) => { const r = x.rows.find(rw => /ราคา/.test(rw[0])) || x.rows[0]; return `<button class="item trlink" data-tr="${d.day}-${k}"><b>${esc(x.t)}</b><div class="small">${esc(r[0])}: ${esc(r[1].length > 90 ? r[1].slice(0, 90) + '…' : r[1])} ${stTag(r[2])}</div><span class="go2">ดูวิธีซื้อและราคา</span></button>`; }).join('') + '<p class="note">กดเพื่อไปแท็บเดินทาง · ข้อมูลส่วนใหญ่ยังไม่ยืนยันกับหน้าทางการ ดูป้ายสถานะ</p>'), 'ซื้อที่ไหน ราคา และตารางเวลาของแต่ละช่วงวันนี้') : ''}
+    ${dayTr.length ? blk('ตั๋วและวิธีซื้อ', tile(dayTr.map((x, k) => { const r = x.rows.find(rw => /ราคา/.test(rw[0])) || x.rows[0]; return `<button class="item trlink" data-tr="${d.day}-${k}"><b>${esc(x.t)}</b><div class="small">${esc(r[0])}: ${esc(r[1].length > 90 ? r[1].slice(0, 90) + '…' : r[1])} ${stTag(r[2])}</div><span class="go2">ดูวิธีซื้อและราคา</span></button>`; }).join('') + '<p class="note">กดเพื่อไปแท็บเดินทาง · ดูป้ายสถานะว่าข้อไหนยืนยันกับหน้าทางการแล้ว</p>'), 'ซื้อที่ไหน ราคา และตารางเวลาของแต่ละช่วงวันนี้') : ''}
     ${blk('การเดินทาง', tile(legs.map(l => `<div class="item"><div style="display:flex;justify-content:space-between;gap:12px"><b>${esc(l.frm)} → ${esc(l.to)}</b><span class="small" style="white-space:nowrap">${l.min >= 60 ? fmtH(l.min / 60) + ' ชม.' : l.min + ' น.'}</span></div><div class="small">${esc(l.mode)}${l.km ? ` · ${l.km} กม.` : ''}${l.note ? ` · ${esc(l.note)}` : ''}</div></div>`).join('')))}`;
   const aside = `
     ${blk('แผนที่วันนี้', `<div class="tile flush"><div id="daymap" class="mini"></div></div><div class="stops">${stops.map(s => `<a href="${gmSearch(s.q)}" target="_blank" rel="noopener"><b>${s.mark}</b>${esc(s.name)}</a>`).join('')}</div><p class="note">ตำแหน่งโดยประมาณ กดชื่อเพื่อเปิด Google Maps</p>`)}
@@ -551,9 +471,12 @@ function renderTransport() {
 }
 
 /* ---------- food ---------- */
+// รูปย่าน (ใช้รูปสถานที่เด่นของย่านนั้น ไม่ใช่รูปร้านหรือโรงแรมจริง)
+const AREA_PHOTO = { 'เจียอี้': 'E7', 'อาลีซาน': 'E1', 'อาลีซาน (นอกอุทยาน)': 'E3', 'SML': 'F1', 'อูไหล': 'B1', 'จีหลง': 'C1', 'จิ่วเฟิ่น': 'D1', 'ไทเป': 'A1' };
+const areaImg = z => { const p = byCode[AREA_PHOTO[z]], src = p && img(p); return src ? `<div class="fimg"><img src="${esc(src)}" alt="" loading="lazy"><span>รูปย่าน${esc(z.replace(/ \(.*/, ''))} ไม่ใช่รูปร้าน/ที่พัก</span></div>` : ''; };
 const FF = { q: '', z: 'all', d: 'all', s: 'all', c: 'all' };
 const ftName = k => (FTYPES.find(x => x[0] === k) || [k, k])[1];
-const foodCard = (f, n) => `<div class="fd ${f.day ? 'in' : ''}" data-pick="${f.id}" ${f.day ? `style="--dc:${dayColor(f.day)}"` : ''}><span class="cn">${n}</span>
+const foodCard = (f, n) => `<div class="fd ${f.day ? 'in' : ''}" data-pick="${f.id}" ${f.day ? `style="--dc:${dayColor(f.day)}"` : ''}>${areaImg(f.z)}<span class="cn">${n}</span>
   ${f.day ? `<span class="pb2">ในแผน · ${f.day} · ${esc(f.meal)}</span>` : ''}
   <div class="fn">${esc(f.n)}</div>
   <div class="fz">${esc(f.z)}</div>
@@ -595,7 +518,7 @@ function renderFood() {
 /* ---------- hotels ---------- */
 const HF = { q: '', z: 'all', s: 'all', c: 'all', o: 'default' };
 const htName = k => (HTYPES.find(x => x[0] === k) || [k, k])[1];
-const hotelCard = (h, n) => `<div class="fd ${h.plan ? 'in' : ''}" data-pick="${h.id}" ${h.plan ? `style="--dc:${dayColor(h.plan.day)}"` : ''}><span class="cn">${n}</span>
+const hotelCard = (h, n) => `<div class="fd ${h.plan ? 'in' : ''}" data-pick="${h.id}" ${h.plan ? `style="--dc:${dayColor(h.plan.day)}"` : ''}>${areaImg(h.z)}<span class="cn">${n}</span>
   ${h.plan ? `<span class="pb2">ในแผน · ${esc(h.plan.night)}${h.plan.main ? ' · ตัวเลือกหลัก' : ''}</span>` : ''}
   <div class="fn">${esc(h.n)}</div>
   <div class="fz">${esc(h.z)}${h.rating ? ` · คะแนน ${h.rating}/10` : ''}</div>
@@ -685,8 +608,35 @@ function renderTodo() {
   const all = TODO.flatMap(g => g.items), n = all.filter(i => done[i.id]).length;
   $('#tab-todo').innerHTML = `<div class="hero" style="text-align:left;padding:40px 0 0"><p class="eyebrow">ทำแล้ว ${n} จาก ${all.length} ข้อ</p><h1>เตรียมตัว</h1><div class="prog"><i style="width:${n / all.length * 100}%"></i></div></div>` +
     TODO.map(g => blk(esc(g.group.replace(/^[^\wก-๙]+/, '')), tile(g.items.map(i => `<label class="todo ${done[i.id] ? 'done' : ''}"><input type="checkbox" data-id="${i.id}" ${done[i.id] ? 'checked' : ''}><span><span class="tt">${esc(i.t)}<span class="due">${esc(i.due)}</span></span>${i.d ? `<span class="dd">${esc(i.d)}</span>` : ''}</span></label>`).join('')))).join('') +
+    blk('ใช้ร่วมกัน 2 คน', tile(`<p class="plain" style="font-size:15.5px">กดส่งลิงก์ให้อีกคน เมื่อเปิดลิงก์ เครื่องนั้นจะรวมข้อที่ติ๊กแล้วจากทั้งสองเครื่อง และใช้ค่างบตามลิงก์</p><button class="btn" data-share>ส่งเช็คลิสต์และงบให้อีกคน</button><p class="note" id="shareMsg">ไม่มีเซิร์ฟเวอร์ จึงไม่ซิงค์อัตโนมัติ ต้องส่งลิงก์ใหม่ทุกครั้งที่อยากให้อีกเครื่องอัปเดต</p>`)) +
+    blk('ใช้แบบออฟไลน์', tile(`<p class="plain" style="font-size:15.5px">เปิดเว็บนี้ครั้งหนึ่งตอนมีเน็ต หน้าเว็บและรูปจะถูกเก็บไว้ในเครื่อง เปิดได้แม้ไม่มีสัญญาณ (เช่น บนอาลีซาน)</p><ul class="ul"><li>iPhone: เปิดใน Safari → ปุ่มแชร์ → “เพิ่มไปยังหน้าจอโฮม”</li><li>Android: เมนู Chrome → “ติดตั้งแอป” หรือ “เพิ่มลงในหน้าจอหลัก”</li><li>แผนที่ออฟไลน์เก็บเฉพาะส่วนที่เคยเปิดดู ให้เปิดแผนที่แต่ละวันไว้ก่อนเดินทาง</li></ul>${installEvt ? '<button class="btn" data-install>ติดตั้งเป็นแอป</button>' : ''}`)) +
     '<p class="note" style="margin-top:28px">ติ๊กเมื่อทำเสร็จ · จำไว้ในเบราว์เซอร์เครื่องนี้</p>';
   $$('#tab-todo input').forEach(c => c.onchange = () => { done[c.dataset.id] = c.checked; store.set(TODO_KEY, done); renderTodo(); });
+  $$('#tab-todo [data-share]').forEach(b => b.onclick = () => shareState({ todo: done, cost: C }).then(r => { const m = $('#shareMsg'); if (m && r === 'copied') m.textContent = 'คัดลอกลิงก์แล้ว ส่งให้อีกคนทางแชทได้เลย'; }));
+  $$('#tab-todo [data-install]').forEach(b => b.onclick = () => { installEvt.prompt(); installEvt = null; });
+}
+
+/* ---------- share link import ---------- */
+const shared = readShared();
+if (shared) {
+  history.replaceState(null, '', location.pathname + location.search + '#todo');
+  if (window.confirm('นำเข้าเช็คลิสต์และงบจากลิงก์ที่ส่งมา?\nข้อที่ติ๊กแล้วจะรวมกับของเครื่องนี้ ส่วนค่างบจะใช้ตามลิงก์')) {
+    if (shared.todo && typeof shared.todo === 'object') { Object.entries(shared.todo).forEach(([k, v]) => { if (v === true) done[k] = true; }); store.set(TODO_KEY, done); }
+    if (shared.cost && shared.cost.s && shared.cost.items?.length === D.items.length) { C = shared.cost; store.set(COST_KEY, C); }
+  }
+}
+
+/* ---------- offline (PWA) ---------- */
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; if (state.tab === 'todo') renderTodo(); });
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').then(() => navigator.serviceWorker.ready).then(reg => {
+      const own = performance.getEntriesByType('resource').map(e => e.name).filter(u => u.startsWith(location.origin));
+      const imgs = P.filter(p => p.img).map(p => new URL(img(p), location.href).href);
+      reg.active?.postMessage({ cache: [...new Set([...own, ...imgs])] });
+    }).catch(() => {});
+  });
 }
 
 /* ---------- boot ---------- */

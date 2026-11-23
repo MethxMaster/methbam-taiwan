@@ -37,7 +37,7 @@ const L = {
 
 export const FOODS = [
   // ---------- เจียอี้ ----------
-  { id: 'f1', n: 'Chiayi Sanya Turkey Rice', z: 'เจียอี้', tags: ['rice'], dish: 'ข้าวหน้าไก่งวง (และก๋วยเตี๋ยวซี่โครงหมู)', note: 'อยู่ตรงข้ามสถานีรถไฟเจียอี้ เปิดมาราว 50 ปี ตามไกด์ · จากสถานี HSR ต้องนั่งรถฟรีสาย 7211/7212 ~25 นาที (ใช้ตั๋ว HSR) แล้วขึ้นบัส 7322 จากสถานีรถไฟต่อ (ตามแผน) · ถ้าเที่ยว 7322 ไม่สะดวก ให้ซื้อของกินที่ HSR แล้วขึ้น 7329 แทน', s: 'sec', src: [L.chiayiStation], day: 'D1', meal: 'กลางวัน', q: 'Chiayi Sanya Turkey Rice' },
+  { id: 'f1', n: 'Chiayi Sanya Turkey Rice', z: 'เจียอี้', tags: ['rice'], dish: 'ข้าวหน้าไก่งวง (และก๋วยเตี๋ยวซี่โครงหมู)', note: 'อยู่ตรงข้ามสถานีรถไฟเจียอี้ เปิดมาราว 50 ปี ตามไกด์ · จากสถานี HSR ทางออก 2 นั่ง BRT ~25 นาที แล้วขึ้นบัส 7322 จากสถานีรถไฟต่อ (ตามแผน) · ถ้าเที่ยว 7322 ไม่สะดวก ให้ซื้อของกินที่ HSR แล้วขึ้น 7329 แทน', s: 'sec', src: [L.chiayiStation], day: 'D1', meal: 'กลางวัน', q: 'Chiayi Sanya Turkey Rice' },
   { id: 'f2', n: 'Guo Jia Turkey Rice', z: 'เจียอี้', tags: ['rice'], dish: 'ข้าวหน้าไก่งวง', note: 'มี 2 สาขา คือถนนเหวินฮวาและถนนต้าหยา รีวิวบอกสาขาเหวินฮวาเปิดนานกว่า · ไม่อยู่ใกล้สถานี HSR', s: 'sec', src: [L.guoJia, L.chiayiTurkey], q: 'Guo Jia Turkey Rice Chiayi' },
   { id: 'f3', n: 'Ah Hong Shi Turkey Rice', z: 'เจียอี้', tags: ['rice'], dish: 'ข้าวหน้าไก่งวง', note: 'ถนนกว่างฮัว เจียอี้ · ชาวเจียอี้เถียงกันว่าร้านไหนดีที่สุด', s: 'sec', src: [L.ahHong], q: 'Ah Hong Shi Turkey Rice Chiayi' },
   { id: 'f4', n: 'Chiayi Shuipen Turkey Rice (สาขาจงซาน)', z: 'เจียอี้', tags: ['rice'], dish: 'ข้าวหน้าไก่งวง', note: 'รีวิวบอกใกล้สถานีรถไฟเจียอี้', s: 'sec', src: [L.chiayiTurkey], q: 'Chiayi Shuipen Turkey Rice Zhongshan' },

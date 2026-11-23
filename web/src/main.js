@@ -23,7 +23,7 @@ const img = p => (p.img ? import.meta.env.BASE_URL + p.img : null);
 const P = D.places, DAYS = D.days, LEGS = D.legs;
 const byCode = Object.fromEntries(P.map(p => [p.code, p]));
 const AIRPORT = { lat: 25.0777, lng: 121.2328 };
-const ORDER = { D1: [], D2: ['E2', 'E1', 'F1'], D3: ['F2', 'B1'], D4: ['C1', 'C2', 'D1'], D5: ['A2', 'A1'] };
+const ORDER = { D1: [], D2: ['E2', 'E1', 'F1'], D3: ['F2', 'B1'], D4: ['C2', 'D1', 'C1'], D5: ['A2', 'A1'] };
 const GROUP_SHORT = { A: 'ไทเป', B: 'อูไหล', C: 'จีหลง', D: 'จิ่วเฟิ่น', E: 'อาลีซาน', F: 'SML', G: 'ทางผ่าน' };
 const gk = p => p.code.replace(/\d+/g, '');
 // หมวดหมู่สถานที่ (จัดกลุ่มจากแท็กเดิมของแต่ละที่)
@@ -146,7 +146,7 @@ const NOTES = [
 ];
 const OVERVIEW = {
   D1: 'เถาหยวน → เจียอี้ → อาลีซาน', D2: 'อาลีซาน (จู้ซาน) → SML', D3: 'SML → ไถจง → ไทเป → อูไหล',
-  D4: 'ไทเป → จีหลง → จิ่วเฟิ่น → ไทเป', D5: 'ซีเหมินติง → สนามบิน',
+  D4: 'ไทเป → จีหลง → จิ่วเฟิ่น → เมี่ยวโข่ว → ไทเป', D5: 'ซีเหมินติง → สนามบิน',
 };
 function dayCosts(day) {
   const rows = [];
@@ -254,14 +254,14 @@ function drawDayRoute(target, stops, color) {
 }
 // เส้นทางทั้งทริป: จุดหลักเรียงตามลำดับที่ไป (ไทเปที่พักแวะซ้ำ ใช้เลขเดิม)
 const KEY = [
-  ['TPE', 'สนามบินเถาหยวน', 'D1 · D5'], ['HSR_TY', 'HSR เถาหยวน', 'D1'], ['HSR_CY', 'HSR เจียอี้', 'D1'], ['E1', 'อาลีซาน', 'D1–D2'],
+  ['TPE', 'สนามบินเถาหยวน', 'D1 · D5'], ['HSR_TY', 'HSR เถาหยวน', 'D1'], ['HSR_CY', 'HSR เจียอี้', 'D1'], ['CHIAYI_STN', 'สถานีรถไฟเจียอี้', 'D1'], ['E1', 'อาลีซาน', 'D1–D2'],
   ['HOTEL_SML', 'SML อีต้าเส้า', 'D2–D3'], ['HSR_TC', 'HSR ไถจง', 'D3'], ['HOTEL_TPE', 'ไทเป ซีเหมินติง', 'D3–D5'], ['B1', 'อูไหล', 'D3'],
   ['C2', 'จีหลง', 'D4'], ['D1', 'จิ่วเฟิ่น', 'D4'],
 ];
 const KEY_LEGS = [
-  ['TPE', 'HSR_TY', 'D1'], ['HSR_TY', 'HSR_CY', 'D1'], ['HSR_CY', 'E1', 'D1'], ['E1', 'HOTEL_SML', 'D2'],
+  ['TPE', 'HSR_TY', 'D1'], ['HSR_TY', 'HSR_CY', 'D1'], ['HSR_CY', 'CHIAYI_STN', 'D1'], ['CHIAYI_STN', 'E1', 'D1'], ['E1', 'HOTEL_SML', 'D2'],
   ['HOTEL_SML', 'HSR_TC', 'D3'], ['HSR_TC', 'HOTEL_TPE', 'D3'], ['HOTEL_TPE', 'B1', 'D3'], ['B1', 'HOTEL_TPE', 'D3', .006],
-  ['HOTEL_TPE', 'C2', 'D4'], ['C2', 'D1', 'D4'], ['D1', 'HOTEL_TPE', 'D4'], ['HOTEL_TPE', 'TPE', 'D5'],
+  ['HOTEL_TPE', 'C2', 'D4'], ['C2', 'D1', 'D4'], ['D1', 'C2', 'D4', .006], ['C2', 'HOTEL_TPE', 'D4', .006], ['HOTEL_TPE', 'TPE', 'D5'],
 ];
 function drawOverviewRoute(target) {
   const pts = [], items = [];
@@ -523,7 +523,7 @@ function renderPlaces() {
 /* ---------- transport ---------- */
 const stTag = s => `<span class="stt2 st-${STATUS[s][1]}">${STATUS[s][0]}</span>`;
 const srcLinks = arr => (arr || []).map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(n)}</a>`).join(' · ');
-const TR_ROUTES = [['TPE', 'HSR_TY'], ['HSR_TY', 'HSR_CY'], ['HSR_CY', 'ALI_STN'], ['ALI_STN'], ['ALI_STN', 'E2'], ['ALI_STN', 'SHUISHE'], ['SHUISHE', 'F1'], ['SHUISHE', 'HSR_TC'], ['HSR_TC', 'TPE_MAIN'], ['TPE_MAIN', 'XINDIAN', 'B1'], ['TPE_MAIN', 'KEELUNG_STN', 'D1'], ['TPE_MAIN', 'TPE']];
+const TR_ROUTES = [['TPE', 'HSR_TY'], ['HSR_TY', 'HSR_CY'], ['HSR_CY', 'CHIAYI_STN', 'ALI_STN'], ['ALI_STN'], ['ALI_STN', 'E2'], ['ALI_STN', 'SHUISHE'], ['SHUISHE', 'F1'], ['SHUISHE', 'HSR_TC'], ['HSR_TC', 'TPE_MAIN'], ['TPE_MAIN', 'XINDIAN', 'B1'], ['TPE_MAIN', 'C2', 'D1', 'C1', 'TPE_MAIN'], ['TPE_MAIN', 'TPE']];
 if (TR_ROUTES.length !== TRANSPORT.length) console.warn('TR_ROUTES length mismatch');
 TMITEMS.transport = sel => {
   const items = [], lines = [];

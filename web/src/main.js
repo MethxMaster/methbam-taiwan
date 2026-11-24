@@ -444,7 +444,7 @@ function renderPlaces() {
 /* ---------- transport ---------- */
 const stTag = s => `<span class="stt2 st-${STATUS[s][1]}">${STATUS[s][0]}</span>`;
 const srcLinks = arr => (arr || []).map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(n)}</a>`).join(' · ');
-const TR_ROUTES = [['TPE', 'HSR_TY'], ['HSR_TY', 'HSR_CY'], ['HSR_CY', 'CHIAYI_STN', 'ALI_STN'], ['ALI_STN'], ['ALI_STN', 'E2'], ['ALI_STN', 'SHUISHE'], ['SHUISHE', 'F1'], ['SHUISHE', 'HSR_TC'], ['HSR_TC', 'TPE_MAIN'], ['TPE_MAIN', 'XINDIAN', 'B1'], ['TPE_MAIN', 'C2', 'D1', 'C1', 'TPE_MAIN'], ['TPE_MAIN', 'TPE']];
+const TR_ROUTES = [['TPE', 'HSR_TY'], ['HSR_TY', 'HSR_CY'], ['HSR_CY', 'CHIAYI_STN', 'ALI_STN'], ['ALI_STN'], ['HSR_CY', 'XIDING', 'FENQIHU', 'ALI_STN'], ['ALI_STN', 'E2'], ['ALI_STN', 'SHUISHE'], ['SHUISHE', 'F1'], ['SHUISHE', 'HSR_TC'], ['HSR_TC', 'TPE_MAIN'], ['TPE_MAIN', 'XINDIAN', 'B1'], ['TPE_MAIN', 'C2', 'D1', 'C1', 'TPE_MAIN'], ['TPE_MAIN', 'TPE']];
 if (TR_ROUTES.length !== TRANSPORT.length) console.warn('TR_ROUTES length mismatch');
 TMITEMS.transport = sel => {
   const items = [], lines = [];

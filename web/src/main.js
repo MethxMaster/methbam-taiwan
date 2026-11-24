@@ -213,7 +213,7 @@ function renderOverview() {
       <div class="w"><div class="wl">นับถอยหลัง</div><div class="wn">${dl.n}<small>วัน</small></div><div class="wd">${dl.l}</div></div>
       <div class="w"><div class="wl">งบรวม</div><div class="wn">฿${thb(total)}</div><div class="wd">2 คน · คนละ ฿${thb(total / C.s.people)}</div></div>
       <div class="w c2"><div class="wl">เที่ยวบิน · จองแล้ว</div>
-        <div class="wrow"><span>16 ธ.ค. VZ566</span><b>BKK 01:50 → TPE 06:30</b></div>
+        <div class="wrow"><span>16 ธ.ค. VZ566</span><b>BKK 00:20 → TPE 05:00</b></div>
         <div class="wrow"><span>20 ธ.ค. VZ569</span><b>TPE 19:50 → BKK 22:50</b></div>
         <div class="wd">ทั้งสองเที่ยวใช้ Terminal 1 · ไม่มีสัมภาระโหลดฟรี</div></div>
       <div class="w c2 r2 flush"><div id="ovmap" class="mini"></div></div>

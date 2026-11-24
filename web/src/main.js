@@ -6,7 +6,7 @@ import { TODO } from './todo.js';
 import { DAY_INFO, COST_DAYS, LOCS, HOTELS, HOTEL_FOR_DAY } from './days.js';
 import { TRANSPORT, PACKS, WHEN, STATUS, LINKS } from './transport.js';
 import { FOODS, FZONES, FTYPES } from './foods.js';
-import { HOTEL_LIST, HZONES, HTYPES } from './hotels.js';
+import { HOTEL_LIST, HZONES, HTYPES, FAV_HOTELS } from './hotels.js';
 import { $, $$, esc, store, thb, fmtH, enc, gmSearch, gmDir, seg, blk, tile } from './util.js';
 import { pinIcon, baseTiles, addFullscreen, DAYC, dayColor, addLeg, spreadPins } from './maplib.js';
 import { nowTW, todayInfo, stepNow } from './today.js';
@@ -249,6 +249,7 @@ function hotelBlock(hk, dayId) {
   const h = HOTELS[hk], l = resolveLoc(h.loc);
   return `<div class="small"><b style="color:var(--ink)">${esc(h.title)}</b>${(dayId === 'D4' || dayId === 'D5') ? ' · ที่พักเดียวกับคืนที่แล้ว' : ''}</div>
     <p class="plain" style="margin:6px 0 16px;font-size:15.5px">${esc(h.why)}</p>
+    ${FAV_HOTELS.filter(f => f.night === hk).map(f => `<div class="item favh">${f.img ? `<img src="${BASE + f.img}" alt="" loading="lazy">` : ''}<b>★ ${esc(f.n)}</b> <span class="small">ที่เราสนใจ</span><div class="small">${esc(f.d.split(' · ').slice(0, 2).join(' · '))}</div><div class="price">ราคา: ${esc(f.price)}</div><div class="small"><a href="${gmSearch(f.q)}" target="_blank" rel="noopener">ดูในแผนที่</a></div></div>`).join('')}
     ${h.picks.map((p, k) => `<div class="item"><b>${k + 1}. ${esc(p.n)}</b><div class="small">${esc(p.d)}</div><div class="price">ราคา: ${esc(p.price)}</div><div class="small"><a href="${gmSearch(p.q)}" target="_blank" rel="noopener">ดูในแผนที่</a></div></div>`).join('')}
     <p class="note">คัดจากเว็บจองห้องและรีวิว ไม่ใช่การจัดอันดับทางการ ราคาเป็นตัวอย่างคนละวัน ไม่ใช่ราคาวันที่ไป ต้องกรอกวันที่เช็คเอง · <a href="${gmSearch(l.q)}" target="_blank" rel="noopener">ดูย่านนี้ในแผนที่</a></p><button class="more" data-hotels="${hk}" style="font-size:16px;margin-top:10px">ดูตัวเลือกทั้งหมดในแท็บที่พัก</button>`;
 }
@@ -405,7 +406,7 @@ function openEmbed(q, name) {
   $('#sheet').hidden = false;
 }
 const foodAnchor = f => ({ 'เจียอี้': 'CHIAYI_STN', 'อาลีซาน': 'E1', 'SML': /สุ่ยเซอ/.test(f.n) ? 'SHUISHE' : 'HOTEL_SML', 'อูไหล': 'B1', 'จีหลง': 'C1', 'จิ่วเฟิ่น': 'D1', 'ไทเป': /Raohe|เหราเหอ/.test(f.n) ? 'RAOHE' : /Shilin|ซื่อหลิน/.test(f.n) ? 'SHILIN' : 'HOTEL_TPE' }[f.z]);
-const hotelAnchor = h => h.id === 'v1' ? 'XIDING' : h.id === 'v3' ? 'DUNHUA' : h.z === 'อาลีซาน' ? 'HOTEL_ALI' : h.z === 'อาลีซาน (นอกอุทยาน)' ? (['e5', 'e6'].includes(h.id) ? 'FANLU' : 'FENQIHU') : h.z === 'SML' ? (h.tags.includes('pier') ? 'HOTEL_SML' : 'SML_CENTER') : h.z === 'เจียอี้' ? 'CHIAYI_STN' : 'HOTEL_TPE';
+const hotelAnchor = h => h.loc ? h.loc : h.z === 'อาลีซาน' ? 'HOTEL_ALI' : h.z === 'อาลีซาน (นอกอุทยาน)' ? (['e5', 'e6'].includes(h.id) ? 'FANLU' : 'FENQIHU') : h.z === 'SML' ? (h.tags.includes('pier') ? 'HOTEL_SML' : 'SML_CENTER') : h.z === 'เจียอี้' ? 'CHIAYI_STN' : 'HOTEL_TPE';
 const AREA_NOTE = 'หมุดอยู่ที่ย่านนี้ ไม่ใช่ที่อยู่จริงของร้าน/โรงแรม · กด “ตำแหน่งจริง” หรือ Google Maps เพื่อดูจุดที่แน่ชัด';
 
 const F = { q: '', g: 'all', d: 'all', s: 'all', c: 'all' };
@@ -474,6 +475,8 @@ function renderTransport() {
 // รูปย่าน (ใช้รูปสถานที่เด่นของย่านนั้น ไม่ใช่รูปร้านหรือโรงแรมจริง)
 const AREA_PHOTO = { 'เจียอี้': 'E7', 'อาลีซาน': 'E1', 'อาลีซาน (นอกอุทยาน)': 'E3', 'SML': 'F1', 'อูไหล': 'B1', 'จีหลง': 'C1', 'จิ่วเฟิ่น': 'D1', 'ไทเป': 'A1' };
 const areaImg = z => { const p = byCode[AREA_PHOTO[z]], src = p && img(p); return src ? `<div class="fimg"><img src="${esc(src)}" alt="" loading="lazy"><span>รูปย่าน${esc(z.replace(/ \(.*/, ''))} ไม่ใช่รูปร้าน/ที่พัก</span></div>` : ''; };
+const BASE = import.meta.env.BASE_URL;
+const ownImg = h => `<div class="fimg two"><img src="${BASE + h.img}" alt="" loading="lazy">${h.img2 ? `<img src="${BASE + h.img2}" alt="" loading="lazy">` : ''}<span>ภาพจาก Trip.com</span></div>`;
 const FF = { q: '', z: 'all', d: 'all', s: 'all', c: 'all' };
 const ftName = k => (FTYPES.find(x => x[0] === k) || [k, k])[1];
 const foodCard = (f, n) => `<div class="fd ${f.day ? 'in' : ''}" data-pick="${f.id}" ${f.day ? `style="--dc:${dayColor(f.day)}"` : ''}>${areaImg(f.z)}<span class="cn">${n}</span>
@@ -518,7 +521,7 @@ function renderFood() {
 /* ---------- hotels ---------- */
 const HF = { q: '', z: 'all', s: 'all', c: 'all', o: 'default' };
 const htName = k => (HTYPES.find(x => x[0] === k) || [k, k])[1];
-const hotelCard = (h, n) => `<div class="fd ${h.plan ? 'in' : ''}" data-pick="${h.id}" ${h.plan ? `style="--dc:${dayColor(h.plan.day)}"` : ''}>${areaImg(h.z)}<span class="cn">${n}</span>
+const hotelCard = (h, n) => `<div class="fd ${h.plan ? 'in' : ''}" data-pick="${h.id}" ${h.plan ? `style="--dc:${dayColor(h.plan.day)}"` : ''}>${h.img ? ownImg(h) : areaImg(h.z)}<span class="cn">${n}</span>
   ${h.plan ? `<span class="pb2">ในแผน · ${esc(h.plan.night)}${h.plan.main ? ' · ตัวเลือกหลัก' : ''}</span>` : ''}
   <div class="fn">${esc(h.n)}</div>
   <div class="fz">${esc(h.z)}${h.rating ? ` · คะแนน ${h.rating}/10` : ''}</div>

@@ -405,7 +405,7 @@ function openEmbed(q, name) {
   $('#sheet').hidden = false;
 }
 const foodAnchor = f => ({ 'เจียอี้': 'CHIAYI_STN', 'อาลีซาน': 'E1', 'SML': /สุ่ยเซอ/.test(f.n) ? 'SHUISHE' : 'HOTEL_SML', 'อูไหล': 'B1', 'จีหลง': 'C1', 'จิ่วเฟิ่น': 'D1', 'ไทเป': /Raohe|เหราเหอ/.test(f.n) ? 'RAOHE' : /Shilin|ซื่อหลิน/.test(f.n) ? 'SHILIN' : 'HOTEL_TPE' }[f.z]);
-const hotelAnchor = h => h.z === 'อาลีซาน' ? 'HOTEL_ALI' : h.z === 'อาลีซาน (นอกอุทยาน)' ? (['e5', 'e6'].includes(h.id) ? 'FANLU' : 'FENQIHU') : h.z === 'SML' ? (h.tags.includes('pier') ? 'HOTEL_SML' : 'SML_CENTER') : h.z === 'เจียอี้' ? 'CHIAYI_STN' : 'HOTEL_TPE';
+const hotelAnchor = h => h.z === 'อาลีซาน' ? 'HOTEL_ALI' : h.z === 'อาลีซาน (นอกอุทยาน)' ? (h.id === 'e34' ? 'XIDING' : ['e5', 'e6'].includes(h.id) ? 'FANLU' : 'FENQIHU') : h.z === 'SML' ? (h.tags.includes('pier') ? 'HOTEL_SML' : 'SML_CENTER') : h.z === 'เจียอี้' ? 'CHIAYI_STN' : 'HOTEL_TPE';
 const AREA_NOTE = 'หมุดอยู่ที่ย่านนี้ ไม่ใช่ที่อยู่จริงของร้าน/โรงแรม · กด “ตำแหน่งจริง” หรือ Google Maps เพื่อดูจุดที่แน่ชัด';
 
 const F = { q: '', g: 'all', d: 'all', s: 'all', c: 'all' };

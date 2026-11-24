@@ -31,6 +31,7 @@ const U = {
 
 // คุณสมบัติเพิ่มของตัวเลือกที่อยู่ใน days.js (ชื่อต้องตรงกัน)
 const META = {
+  'Gau Shan Ching Hotel (阿里山高山青大飯店)': { tags: ['mid', 'transit'], usd: 69, rating: null },
   'Alishan Gou Hotel': { tags: ['budget', 'transit'], usd: null, rating: null },
   'Alishan Hotel (Alishan House)': { tags: ['high', 'transit'], usd: 385, rating: 8.8 },
   'FRIDAY Inn Guest House': { tags: ['mid', 'pier', 'bnb'], usd: 68, rating: 9.4 },
@@ -51,7 +52,7 @@ const SRC = { ali: [U.aliStation, U.aliList], sml: [U.smlAgoda, U.smlList], tpe:
 const planned = Object.entries(HOTELS).flatMap(([k, h]) => h.picks.map((p, i) => ({
   id: `p-${k}-${i}`, n: p.n, z: ZONE[k], d: p.d, price: p.price, q: p.q,
   ...(META[p.n] || { tags: [], usd: null, rating: null }),
-  s: /US\$|NT\$/.test(p.price) ? 'sec' : 'no',
+  s: /US\$|NT\$|฿/.test(p.price) ? 'sec' : 'no',
   src: SRC[k],
   plan: { day: NIGHT[k][0], night: NIGHT[k][1], main: i === 0, key: k },
 })));
@@ -104,11 +105,11 @@ const extras = [
 // ---- ที่เราสนใจ: ข้อมูลจากภาพหน้าจอ Trip.com ที่ส่งมา (24 พ.ย. 2569) ราคาเปลี่ยนได้ทุกวัน ----
 const TRIP = () => [];
 const favs = [
-  X({ id: 'v1', n: 'Dafang Tea Homestay', night: 'ali', loc: 'XIDING', img: 'img/hotel-v1.jpg', img2: 'img/hotel-v1-room.jpg', z: 'อาลีซาน (นอกอุทยาน)', tags: ['fav', 'bnb'], usd: 80, rating: null, s: 'sec',
+  X({ id: 'v1', n: 'Dafang Tea Homestay', night: 'ali-alt', loc: 'XIDING', img: 'img/hotel-v1.jpg', img2: 'img/hotel-v1-room.jpg', z: 'อาลีซาน (นอกอุทยาน)', tags: ['fav', 'bnb'], usd: 80, rating: null, s: 'sec',
     d: 'No. 66-8 Xiding, Gongtian Village, Fanlu Township, Chiayi County · ย่านเซี่ยติ่ง ริมถนนสาย 18 ระหว่างทางขึ้นอาลีซาน วิวภูเขา ใกล้ทางเดินหลายเส้น (จากรีวิว) · ห้อง Double 1 queen bed 15 ตร.ม. ชั้น 2 มีหน้าต่าง ฮีตเตอร์ ห้องน้ำในตัว Wi-Fi · รวมอาหารเช้า 2 ที่ · ยกเลิกฟรีถึง 23:59 วันที่ 11 ธ.ค. ไม่ต้องจ่ายจนถึง 9 ธ.ค. (ดูเมื่อ 23 พ.ย.) · ไกลจากสถานีรถไฟป่าอาลีซาน (~25–30 กม. ค่าประมาณ) ไปรถไฟพระอาทิตย์ขึ้นจู้ซานไม่ได้ถ้าไม่มีรถ',
     price: 'THB 2,476 ต่อคืน (ก่อนหน้านี้เห็น 2,479 รวมภาษี 2,863) · 16–17 ธ.ค. 1 คืน 2 คน', q: 'Dafang Tea Homestay Xiding Fanlu Chiayi',
     src: [['Dafang Tea Homestay (Trip.com)', 'https://www.trip.com/w/XWNpYWUCIX2']] }),
-  X({ id: 'v2', n: 'Fenchihu Hotel (奮起湖大飯店)', night: 'ali', loc: 'FENQIHU', img: 'img/hotel-v2.jpg', img2: 'img/hotel-v2-room.jpg', z: 'อาลีซาน (นอกอุทยาน)', tags: ['fav', 'mid'], usd: 112, rating: null, s: 'sec',
+  X({ id: 'v2', n: 'Fenchihu Hotel (奮起湖大飯店)', night: 'ali-alt', loc: 'FENQIHU', img: 'img/hotel-v2.jpg', img2: 'img/hotel-v2-room.jpg', z: 'อาลีซาน (นอกอุทยาน)', tags: ['fav', 'mid'], usd: 112, rating: null, s: 'sec',
     d: 'No. 178-1 Fenqihu, Zhuqi Township, Chiayi County · อยู่ในหมู่บ้านเก่าเฟิ่นฉีหู ห้องแบบเสื่อทาทามิญี่ปุ่น (จากรีวิว) · มีอาหารเช้าและยกเลิกฟรี · Wi-Fi ในห้อง ชั้นปลอดบุหรี่ · บัส 7322/7329 บางเที่ยววิ่งผ่านเฟิ่นฉีหู (ทางการ) · ไกลจากสถานีอาลีซาน ไปรถไฟพระอาทิตย์ขึ้นจู้ซานรอบเช้ามืดไม่ได้ถ้าไม่มีรถ',
     price: 'THB 3,499 ต่อคืน (ลดจาก 3,717) · 16–17 ธ.ค. 1 คืน 2 คน', q: 'Fenchihu Hotel Fenqihu Chiayi', src: TRIP('Fenchihu Hotel') }),
   X({ id: 'v3', n: 'ILLUME TAIPEI', night: 'tpe', loc: 'DUNHUA', img: 'img/hotel-v3.jpg', img2: 'img/hotel-v3-room.jpg', z: 'ไทเป', tags: ['fav', 'high'], usd: null, rating: null, s: 'no',

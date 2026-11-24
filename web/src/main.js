@@ -218,10 +218,10 @@ function renderOverview() {
         <div class="wd">ทั้งสองเที่ยวใช้ Terminal 1 · ไม่มีสัมภาระโหลดฟรี</div></div>
       <div class="w c2 r2 flush"><div id="ovmap" class="mini"></div></div>
       <div class="w c2"><div class="wl">ที่พัก 4 คืน</div>
-        <div class="wrow"><span>16 ธ.ค.</span><b>อาลีซาน</b></div>
+        <div class="wrow"><span>16 ธ.ค.</span><b>อาลีซาน ✅</b></div>
         <div class="wrow"><span>17 ธ.ค.</span><b>SML อีต้าเส้า</b></div>
         <div class="wrow"><span>18–19 ธ.ค.</span><b>ไทเป ซีเหมินติง</b></div>
-        <div class="wd">ยังไม่ได้จอง · ดูตัวเลือกและราคาในหน้ารายวัน</div><button class="more" data-hotels="plan" style="font-size:15px;margin-top:8px">ดูตัวเลือกที่พัก</button></div>
+        <div class="wd">อาลีซานจองแล้ว (Gau Shan Ching Hotel) · คืนอื่นยังไม่ได้จอง</div><button class="more" data-hotels="plan" style="font-size:15px;margin-top:8px">ดูตัวเลือกที่พัก</button></div>
       <div class="w"><div class="wl">เตรียมตัว</div>
         <div class="hrow" style="margin-top:8px"><svg class="ring" viewBox="0 0 64 64"><circle cx="32" cy="32" r="${R}" fill="none" stroke="var(--line)" stroke-width="7"/><circle cx="32" cy="32" r="${R}" fill="none" stroke="var(--btn)" stroke-width="7" stroke-linecap="round" stroke-dasharray="${CIRC}" stroke-dashoffset="${CIRC * (1 - nd / all.length)}" transform="rotate(-90 32 32)"/></svg><div class="wn" style="margin:0;font-size:30px">${nd}/${all.length}</div></div>
         <div class="wd">ข้อที่ทำแล้ว</div></div>
@@ -444,7 +444,7 @@ function renderPlaces() {
 /* ---------- transport ---------- */
 const stTag = s => `<span class="stt2 st-${STATUS[s][1]}">${STATUS[s][0]}</span>`;
 const srcLinks = arr => (arr || []).map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(n)}</a>`).join(' · ');
-const TR_ROUTES = [['TPE', 'HSR_TY'], ['HSR_TY', 'HSR_CY'], ['HSR_CY', 'CHIAYI_STN', 'ALI_STN'], ['ALI_STN'], ['ALI_STN', 'E2'], ['ALI_STN', 'SHUISHE'], ['SHUISHE', 'F1'], ['SHUISHE', 'HSR_TC'], ['HSR_TC', 'TPE_MAIN'], ['TPE_MAIN', 'XINDIAN', 'B1'], ['TPE_MAIN', 'C2', 'D1', 'C1', 'TPE_MAIN'], ['TPE_MAIN', 'TPE']];
+const TR_ROUTES = [['TPE', 'HSR_TY'], ['HSR_TY', 'HSR_CY'], ['HSR_CY', 'CHIAYI_STN', 'ALI_STN'], ['ALI_STN'], ['HSR_CY', 'XIDING', 'FENQIHU', 'ALI_STN'], ['ALI_STN', 'E2'], ['ALI_STN', 'SHUISHE'], ['SHUISHE', 'F1'], ['SHUISHE', 'HSR_TC'], ['HSR_TC', 'TPE_MAIN'], ['TPE_MAIN', 'XINDIAN', 'B1'], ['TPE_MAIN', 'C2', 'D1', 'C1', 'TPE_MAIN'], ['TPE_MAIN', 'TPE']];
 if (TR_ROUTES.length !== TRANSPORT.length) console.warn('TR_ROUTES length mismatch');
 TMITEMS.transport = sel => {
   const items = [], lines = [];

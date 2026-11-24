@@ -6,7 +6,7 @@ import { HOTELS } from './days.js';
 
 export const HZONES = ['อาลีซาน', 'อาลีซาน (นอกอุทยาน)', 'SML', 'ไทเป', 'เจียอี้'];
 export const HTYPES = [
-  ['budget', 'ประหยัด & ฮอสเทล'], ['mid', 'ระดับกลาง'], ['high', 'ระดับสูง'], ['bnb', 'B&B / เกสต์เฮาส์'],
+  ['fav', 'ที่เราสนใจ ★'], ['near', 'ใกล้ที่เราสนใจ'], ['budget', 'ประหยัด & ฮอสเทล'], ['mid', 'ระดับกลาง'], ['high', 'ระดับสูง'], ['bnb', 'B&B / เกสต์เฮาส์'],
   ['transit', 'ใกล้สถานี / MRT'], ['pier', 'ใกล้ท่าเรือ'], ['view', 'วิวทะเลสาบ'],
 ];
 
@@ -100,4 +100,36 @@ const extras = [
   X({ id: 'e33', n: 'Maison De Chine Hotel', z: 'เจียอี้', tags: ['high'], usd: null, rating: 9.2, d: '4 ดาว ห่างสถานีรถไฟ ~0.91 กม. คะแนน 9.2 บน Agoda', price: 'ไม่พบราคา', q: 'Maison De Chine Hotel Chiayi', src: [U.maison] }),
 ];
 
-export const HOTEL_LIST = [...planned, ...extras];
+
+// ---- ที่เราสนใจ: ข้อมูลจากภาพหน้าจอ Trip.com ที่ส่งมา (24 พ.ย. 2569) ราคาเปลี่ยนได้ทุกวัน ----
+const TRIP = () => [];
+const favs = [
+  X({ id: 'v1', n: 'Dafang Tea Homestay', night: 'ali', loc: 'XIDING', img: 'img/hotel-v1.jpg', img2: 'img/hotel-v1-room.jpg', z: 'อาลีซาน (นอกอุทยาน)', tags: ['fav', 'bnb'], usd: 80, rating: null, s: 'sec',
+    d: 'No. 66-8 Xiding, Gongtian Village, Fanlu Township, Chiayi County · ย่านเซี่ยติ่ง ริมถนนสาย 18 ระหว่างทางขึ้นอาลีซาน วิวภูเขา ใกล้ทางเดินหลายเส้น (จากรีวิว) · ห้อง Double 1 queen bed 15 ตร.ม. ชั้น 2 มีหน้าต่าง ฮีตเตอร์ ห้องน้ำในตัว Wi-Fi · รวมอาหารเช้า 2 ที่ · ยกเลิกฟรีถึง 23:59 วันที่ 11 ธ.ค. ไม่ต้องจ่ายจนถึง 9 ธ.ค. (ดูเมื่อ 23 พ.ย.) · ไกลจากสถานีรถไฟป่าอาลีซาน (~25–30 กม. ค่าประมาณ) ไปรถไฟพระอาทิตย์ขึ้นจู้ซานไม่ได้ถ้าไม่มีรถ',
+    price: 'THB 2,476 ต่อคืน (ก่อนหน้านี้เห็น 2,479 รวมภาษี 2,863) · 16–17 ธ.ค. 1 คืน 2 คน', q: 'Dafang Tea Homestay Xiding Fanlu Chiayi',
+    src: [['Dafang Tea Homestay (Trip.com)', 'https://www.trip.com/w/XWNpYWUCIX2']] }),
+  X({ id: 'v2', n: 'Fenchihu Hotel (奮起湖大飯店)', night: 'ali', loc: 'FENQIHU', img: 'img/hotel-v2.jpg', img2: 'img/hotel-v2-room.jpg', z: 'อาลีซาน (นอกอุทยาน)', tags: ['fav', 'mid'], usd: 112, rating: null, s: 'sec',
+    d: 'No. 178-1 Fenqihu, Zhuqi Township, Chiayi County · อยู่ในหมู่บ้านเก่าเฟิ่นฉีหู ห้องแบบเสื่อทาทามิญี่ปุ่น (จากรีวิว) · มีอาหารเช้าและยกเลิกฟรี · Wi-Fi ในห้อง ชั้นปลอดบุหรี่ · บัส 7322/7329 บางเที่ยววิ่งผ่านเฟิ่นฉีหู (ทางการ) · ไกลจากสถานีอาลีซาน ไปรถไฟพระอาทิตย์ขึ้นจู้ซานรอบเช้ามืดไม่ได้ถ้าไม่มีรถ',
+    price: 'THB 3,499 ต่อคืน (ลดจาก 3,717) · 16–17 ธ.ค. 1 คืน 2 คน', q: 'Fenchihu Hotel Fenqihu Chiayi', src: TRIP('Fenchihu Hotel') }),
+  X({ id: 'v3', n: 'ILLUME TAIPEI', night: 'tpe', loc: 'DUNHUA', img: 'img/hotel-v3.jpg', img2: 'img/hotel-v3-room.jpg', z: 'ไทเป', tags: ['fav', 'high'], usd: null, rating: null, s: 'no',
+    d: 'No. 100 Dunhua North Road, Songshan District, Taipei · 4 ดาว อันดับ 12 ของโรงแรม 4 ดาวในไทเป (Trip.Best) · สระว่ายน้ำกลางแจ้งน้ำอุ่น มีคลาสโยคะ · อยู่ย่านซงซาน/ถนนตุนฮว่าเหนือ ไม่ใช่ซีเหมินติง ไกลจากสถานีไทเปซึ่งเป็นจุดขึ้น HSR และ Airport MRT · ⚠️ ตอนที่ดู (16 → 17–20 ธ.ค. 3 คืน) Trip.com ขึ้นว่า “This hotel is not currently accepting bookings”',
+    price: 'ไม่มีราคา · Trip.com ไม่รับจองช่วงนี้ ณ วันที่ดู · 17–20 ธ.ค. 3 คืน 2 คน', q: 'ILLUME TAIPEI Dunhua North Road', src: TRIP('ILLUME TAIPEI') }),
+];
+
+// ---- ใกล้ที่พักที่เราสนใจ: จากการค้นเว็บ 24 พ.ย. 2569 ราคาเป็นตัวอย่างคนละวัน ไม่ใช่ราคาวันที่ไป · กรองไว้ไม่เกินราว 5,000 บาท/คืน ----
+const KY = (n, u) => [[n, u]];
+const near = [
+  X({ id: 'n1', n: 'SunSweetHouse', loc: 'XIDING', z: 'อาลีซาน (นอกอุทยาน)', tags: ['near', 'bnb'], usd: null, rating: null, d: 'No. 66-10 Xiding, Fanlu · ติดกับ Dafang Tea Homestay บทความรีวิวบอกว่าวิวภูเขาเกิน 180 องศา', price: 'ไม่พบราคา', q: 'SunSweetHouse Xiding Fanlu', src: KY('รีวิว Taiwan Everything', 'https://taiwaneverything.cc/?p=21121') }),
+  X({ id: 'n2', n: 'Alishan Tea Homestay', loc: 'XIDING', z: 'อาลีซาน (นอกอุทยาน)', tags: ['near', 'bnb', 'budget'], usd: 60, rating: null, d: 'Hotels.com ระบุที่อยู่ No. 4 Shizhuo (สือจั๋ว ห่างเซี่ยติ่งขึ้นไปอีกช่วงหนึ่ง) มีห้องวิวภูเขา · Traveloka ให้ที่อยู่อื่นในชื่อเดียวกัน ต้องเช็คก่อนจอง', price: 'ตัวอย่าง จาก ~US$60 เฉลี่ย ~US$92–101 ต่อคืน', q: 'Alishan Tea Homestay Shizhuo', src: KY('Kayak', 'https://www.kayak.com/Alishan-Hotels-Alishan-Tea-Homestay.467401.ksp') }),
+  X({ id: 'n3', n: 'Alishan B&B Yunmingi Aliscenery', loc: 'XIDING', z: 'อาลีซาน (นอกอุทยาน)', tags: ['near', 'bnb'], usd: 120, rating: null, d: 'อยู่กลางไร่ชา ห้องวิวดี (จากรีวิว) · อยู่เขตจู๋ฉี ไม่ใช่สือจั๋ว ตำแหน่งจริงให้ดูในแผนที่', price: 'ตัวอย่าง ~US$120+ ต่อคืน', q: 'Alishan B&B Yunmingi Aliscenery', src: KY('Hotels.com', 'https://tw.hotels.com/ho486882/a-li-shan-yuan-ming-ju-shan-zhuang-zhu-qi-tai-wan') }),
+  X({ id: 'n4', n: 'Fenglutang B&B', loc: 'FENQIHU', z: 'อาลีซาน (นอกอุทยาน)', tags: ['near', 'bnb'], usd: null, rating: null, d: 'B&B ที่เฟิ่นฉีหู', price: 'ไม่พบราคา', q: 'Fenglutang Bed and Breakfast Fenqihu', src: KY('Expedia', 'https://www.expedia.com/Fenglutang-Bed-And-Breakfast.d3000723354-aaBedAndBreakfast.Travel-Guide-Accommodation') }),
+  X({ id: 'n5', n: 'K Hotels Taipei Nanjing', loc: 'DUNHUA', z: 'ไทเป', tags: ['near', 'mid', 'transit'], usd: 88, rating: null, d: '4 ดาว ย่านซงซาน ห่าง Taipei Arena ~0.2 ไมล์ เดิน ~5 นาทีถึง Taipei Arena และสถานี MRT · ใกล้ ILLUME', price: 'ตัวอย่าง ~US$88–93 ต่อคืน', q: 'K Hotels Taipei Nanjing', src: KY('Expedia', 'https://www.expedia.com/cn/Taipei-Arena-Hotels.0-l6080191-0.Travel-Guide-Filter-Hotels') }),
+  X({ id: 'n6', n: 'Hej Taipei Arena Hotel', loc: 'DUNHUA', z: 'ไทเป', tags: ['near', 'mid'], usd: 94, rating: null, d: '4 ดาว ห่าง Taipei Arena ~700 ม. มีร้านอาหาร · ใกล้ ILLUME', price: 'ตัวอย่าง ~US$94–107 ต่อคืน', q: 'Hej Taipei Arena Hotel', src: KY('Booking.com', 'https://www.booking.com/landmark/tw/taipei-arena.html') }),
+  X({ id: 'n7', n: 'Capital Hotel Arena', loc: 'DUNHUA', z: 'ไทเป', tags: ['near', 'mid', 'transit'], usd: null, rating: null, d: '4 ดาว เดิน ~1 นาทีถึงสถานี MRT Taipei Arena', price: 'ไม่พบราคา', q: 'Capital Hotel Arena Taipei', src: KY('Hotels.com', 'https://th.hotels.com/ho234234/rong-r-m-kh-pi-txl-sakha-xari-na-thipe-tihwan') }),
+  X({ id: 'n8', n: 'Brother Hotel', loc: 'DUNHUA', z: 'ไทเป', tags: ['near', 'mid', 'transit'], usd: null, rating: null, d: '4 ดาว เดิน ~1 นาทีถึง MRT หนานจิงฟู่ซิง (สายสีเขียวและสีน้ำตาล) ~2 นาทีถึง Taipei Arena', price: 'ไม่พบราคา', q: 'Brother Hotel Taipei', src: KY('Booking.com', 'https://www.booking.com/landmark/tw/taipei-arena.html') }),
+  X({ id: 'n9', n: 'Les Suites Taipei Ching-Cheng', loc: 'DUNHUA', z: 'ไทเป', tags: ['near', 'mid', 'transit'], usd: null, rating: null, d: '4 ดาว อยู่หน้า MRT หนานจิงฟู่ซิง', price: 'ไม่พบราคา', q: 'Les Suites Taipei Ching-Cheng', src: KY('Booking.com', 'https://www.booking.com/landmark/tw/taipei-arena.html') }),
+  X({ id: 'n10', n: 'Fullerton Hotel – Maison North', loc: 'DUNHUA', z: 'ไทเป', tags: ['near', 'mid'], usd: 100, rating: null, d: '4 ดาว ห่าง Taipei Arena ~0.7 ไมล์', price: 'ตัวอย่าง ~US$100 ต่อคืน', q: 'Taipei Fullerton Hotel Maison North', src: KY('Expedia', 'https://www.expedia.com/cn/Taipei-Arena-Hotels.0-l6080191-0.Travel-Guide-Filter-Hotels') }),
+];
+
+export const HOTEL_LIST = [...favs, ...planned, ...near, ...extras];
+export const FAV_HOTELS = favs;

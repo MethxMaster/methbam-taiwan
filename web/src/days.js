@@ -18,6 +18,7 @@ export const LOCS = {
   CHIAYI_STN: { name: 'ย่านสถานีรถไฟเจียอี้', lat: 23.4793, lng: 120.4413, q: 'Chiayi Railway Station' },
   FENQIHU: { name: 'ย่านเฟิ่นฉีหู', lat: 23.5040, lng: 120.6890, q: 'Fenqihu Old Street' },
   XIDING: { name: 'ย่านเซี่ยติ่ง (ตำแหน่งคร่าว ๆ)', lat: 23.4700, lng: 120.6600, q: 'Dafang Tea Homestay Xiding Fanlu Chiayi' },
+  DUNHUA: { name: 'ย่านถนนตุนฮว่าเหนือ ซงซาน (ตำแหน่งคร่าว ๆ)', lat: 25.0545, lng: 121.5490, q: 'ILLUME TAIPEI Dunhua North Road' },
   FANLU: { name: 'ย่านฟานลู่', lat: 23.4550, lng: 120.5830, q: 'Fanlu Township Chiayi' },
   SML_CENTER: { name: 'ย่าน SML (ไม่ทราบจุดแน่ชัด)', lat: 23.8570, lng: 120.9140, q: 'Sun Moon Lake' },
   RAOHE: { name: 'ตลาดกลางคืนเหราเหอ', lat: 25.0508, lng: 121.5776, q: 'Raohe Street Night Market' },

@@ -6,7 +6,7 @@ import { HOTELS } from './days.js';
 
 export const HZONES = ['อาลีซาน', 'อาลีซาน (นอกอุทยาน)', 'SML', 'ไทเป', 'เจียอี้'];
 export const HTYPES = [
-  ['budget', 'ประหยัด & ฮอสเทล'], ['mid', 'ระดับกลาง'], ['high', 'ระดับสูง'], ['bnb', 'B&B / เกสต์เฮาส์'],
+  ['fav', 'ที่เราสนใจ ★'], ['budget', 'ประหยัด & ฮอสเทล'], ['mid', 'ระดับกลาง'], ['high', 'ระดับสูง'], ['bnb', 'B&B / เกสต์เฮาส์'],
   ['transit', 'ใกล้สถานี / MRT'], ['pier', 'ใกล้ท่าเรือ'], ['view', 'วิวทะเลสาบ'],
 ];
 
@@ -92,7 +92,6 @@ const extras = [
 
   // ---- เจียอี้ (ตัวเลือกสำรองถ้าไม่ทันบัสขึ้นเขาวันที่ 16) ----
   X({ id: 'e27', n: 'Kite Hostel (เจียอี้)', z: 'เจียอี้', tags: ['budget', 'transit'], usd: 26, rating: null, d: 'เดินจากสถานีรถไฟเจียอี้ ~12 นาที ใกล้ตลาดกลางคืนเหวินฮวา', price: 'ตัวอย่าง ~US$26 ต่อคืน', q: 'Kite Hostel Chiayi', src: [U.chiayi] }),
-  X({ id: 'e34', n: 'Dafang Tea Homestay', z: 'อาลีซาน (นอกอุทยาน)', tags: ['bnb', 'mid'], usd: 82, rating: null, s: 'sec', d: 'ที่อยู่: No. 66-8 Xiding, Gongtian Village, Fanlu Township, Chiayi County (ย่านเซี่ยติ่ง ริมถนนสาย 18 ระหว่างทางขึ้นอาลีซาน) · ห้อง Double 1 queen bed 15 ตร.ม. ชั้น 2 มีหน้าต่าง ฮีตเตอร์ ห้องน้ำในตัว Wi-Fi ห้องปลอดบุหรี่ · รวมอาหารเช้า 2 ที่ · ยกเลิกฟรีถึง 23:59 วันที่ 11 ธ.ค. ไม่ต้องจ่ายจนถึง 9 ธ.ค. · ไกลจากสถานีรถไฟป่าอาลีซาน ไปรถไฟพระอาทิตย์ขึ้นจู้ซานรอบเช้ามืดไม่ได้ถ้าไม่มีรถ', price: 'THB 2,479 ต่อคืน รวมภาษี THB 2,863 (Trip.com ราคาวันที่ 16–17 ธ.ค. 1 คืน 2 คน · เหลือห้องสุดท้าย ณ วันที่ดู)', q: 'Dafang Tea Homestay Xiding Fanlu Chiayi', src: [['Dafang Tea Homestay (Trip.com)', 'https://www.trip.com/w/XWNpYWUCIX2']] }),
   X({ id: 'e28', n: 'Ron Gong Hotel', z: 'เจียอี้', tags: ['budget'], usd: null, rating: null, d: 'Skyscanner จัดเป็นตัวเลือกที่ถูกสุดแถวสถานี (ไม่ระบุวันที่ของราคา)', price: 'ตัวอย่างเฉลี่ย ~€19 ต่อคืน', q: 'Ron Gong Hotel Chiayi', src: [U.chiayi] }),
   X({ id: 'e29', n: 'Chiayi King Hotel', z: 'เจียอี้', tags: ['mid', 'transit'], usd: 46, rating: null, d: '3.5 ดาว เดิน 5 นาทีจากถนนจงซานและสถานีรถไฟ คะแนน 8.0–8.6 ตามแต่ละเว็บ', price: 'ตัวอย่าง ~US$46 ต่อคืน', q: 'Chiayi King Hotel', src: [U.chiayiBk] }),
   X({ id: 'e30', n: 'Hotel Hi Chuiyang', z: 'เจียอี้', tags: ['mid'], usd: null, rating: null, d: 'ห่างสถานีรถไฟ ~755 ม. คะแนนทำเล 8.2 มีอาหารเช้าบุฟเฟต์', price: 'ไม่พบราคา', q: 'Hotel Hi Chuiyang Chiayi', src: [U.hichui] }),
@@ -101,4 +100,20 @@ const extras = [
   X({ id: 'e33', n: 'Maison De Chine Hotel', z: 'เจียอี้', tags: ['high'], usd: null, rating: 9.2, d: '4 ดาว ห่างสถานีรถไฟ ~0.91 กม. คะแนน 9.2 บน Agoda', price: 'ไม่พบราคา', q: 'Maison De Chine Hotel Chiayi', src: [U.maison] }),
 ];
 
-export const HOTEL_LIST = [...planned, ...extras];
+
+// ---- ที่เราสนใจ: ข้อมูลจากภาพหน้าจอ Trip.com ที่ส่งมา (24 พ.ย. 2569) ราคาเปลี่ยนได้ทุกวัน ----
+const TRIP = () => [];
+const favs = [
+  X({ id: 'v1', n: 'Dafang Tea Homestay', z: 'อาลีซาน (นอกอุทยาน)', tags: ['fav', 'bnb'], usd: 80, rating: null, s: 'sec',
+    d: 'No. 66-8 Xiding, Gongtian Village, Fanlu Township, Chiayi County · ย่านเซี่ยติ่ง ริมถนนสาย 18 ระหว่างทางขึ้นอาลีซาน วิวภูเขา ใกล้ทางเดินหลายเส้น (จากรีวิว) · ห้อง Double 1 queen bed 15 ตร.ม. ชั้น 2 มีหน้าต่าง ฮีตเตอร์ ห้องน้ำในตัว Wi-Fi · รวมอาหารเช้า 2 ที่ · ยกเลิกฟรีถึง 23:59 วันที่ 11 ธ.ค. ไม่ต้องจ่ายจนถึง 9 ธ.ค. (ดูเมื่อ 23 พ.ย.) · ไกลจากสถานีรถไฟป่าอาลีซาน (~25–30 กม. ค่าประมาณ) ไปรถไฟพระอาทิตย์ขึ้นจู้ซานไม่ได้ถ้าไม่มีรถ',
+    price: 'THB 2,476 ต่อคืน (ก่อนหน้านี้เห็น 2,479 รวมภาษี 2,863) · 16–17 ธ.ค. 1 คืน 2 คน', q: 'Dafang Tea Homestay Xiding Fanlu Chiayi',
+    src: [['Dafang Tea Homestay (Trip.com)', 'https://www.trip.com/w/XWNpYWUCIX2']] }),
+  X({ id: 'v2', n: 'Fenchihu Hotel (奮起湖大飯店)', z: 'อาลีซาน (นอกอุทยาน)', tags: ['fav', 'mid'], usd: 112, rating: null, s: 'sec',
+    d: 'No. 178-1 Fenqihu, Zhuqi Township, Chiayi County · อยู่ในหมู่บ้านเก่าเฟิ่นฉีหู ห้องแบบเสื่อทาทามิญี่ปุ่น (จากรีวิว) · มีอาหารเช้าและยกเลิกฟรี · Wi-Fi ในห้อง ชั้นปลอดบุหรี่ · บัส 7322/7329 บางเที่ยววิ่งผ่านเฟิ่นฉีหู (ทางการ) · ไกลจากสถานีอาลีซาน ไปรถไฟพระอาทิตย์ขึ้นจู้ซานรอบเช้ามืดไม่ได้ถ้าไม่มีรถ',
+    price: 'THB 3,499 ต่อคืน (ลดจาก 3,717) · 16–17 ธ.ค. 1 คืน 2 คน', q: 'Fenchihu Hotel Fenqihu Chiayi', src: TRIP('Fenchihu Hotel') }),
+  X({ id: 'v3', n: 'ILLUME TAIPEI', z: 'ไทเป', tags: ['fav', 'high'], usd: null, rating: null, s: 'no',
+    d: 'No. 100 Dunhua North Road, Songshan District, Taipei · 4 ดาว อันดับ 12 ของโรงแรม 4 ดาวในไทเป (Trip.Best) · สระว่ายน้ำกลางแจ้งน้ำอุ่น มีคลาสโยคะ · อยู่ย่านซงซาน/ถนนตุนฮว่าเหนือ ไม่ใช่ซีเหมินติง ไกลจากสถานีไทเปซึ่งเป็นจุดขึ้น HSR และ Airport MRT · ⚠️ ตอนที่ดู (16 → 17–20 ธ.ค. 3 คืน) Trip.com ขึ้นว่า “This hotel is not currently accepting bookings”',
+    price: 'ไม่มีราคา · Trip.com ไม่รับจองช่วงนี้ ณ วันที่ดู · 17–20 ธ.ค. 3 คืน 2 คน', q: 'ILLUME TAIPEI Dunhua North Road', src: TRIP('ILLUME TAIPEI') }),
+];
+
+export const HOTEL_LIST = [...favs, ...planned, ...extras];

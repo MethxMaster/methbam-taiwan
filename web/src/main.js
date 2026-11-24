@@ -233,7 +233,7 @@ function renderOverview() {
     </div>
     ${blk('แต่ละวัน', `<div class="stack">${DAYS.map(d => {
       const info = DAY_INFO[d.day], cost = dayCosts(d.day).reduce((s, r) => s + r.v, 0);
-      return `<button class="day-card" data-day="${d.day}"><div class="e">${d.day} · ${esc(dayLabel(d))}</div><div class="t">${esc(OVERVIEW[d.day])}</div><div class="d">${esc(info.headline)}</div><div class="m">${info.book.length ? `ต้องจอง ${info.book.length} รายการ` : 'ไม่ต้องจองล่วงหน้า'} · ${info.schedule.length} ช่วงเวลา · ~฿${thb(cost)}</div><span class="go">ดูรายละเอียด</span></button>`; }).join('')}</div>`)}
+      return `<button class="day-card" data-day="${d.day}"><div class="e">${d.day} · ${esc(dayLabel(d))}</div><div class="t">${esc(OVERVIEW[d.day])}</div><div class="d">${esc(info.headline)}</div><div class="m">${info.book.length ? `ต้องจอง ${info.book.length} รายการ` : 'ไม่ต้องจองล่วงหน้า'} · ยืนยันแล้ว ${info.schedule.filter(s => s.ok).length}/${info.schedule.length} ช่วงเวลา · ~฿${thb(cost)}</div><span class="go">ดูรายละเอียด</span></button>`; }).join('')}</div>`)}
     ${blk('ต้องเช็คก่อนจอง', tile(`<ul class="ul">${NOTES.map(n => `<li>${esc(n)}</li>`).join('')}</ul>`))}`;
   bindDay($('#tab-plan'));
   const el = $('#ovmap'); if (!el) return;
@@ -282,7 +282,7 @@ function renderDay() {
   const rowCls = k => !live ? '' : k === live.cur ? ' now' : k === live.next ? ' next' : k < live.cur ? ' past' : '';
   const liveBar = live ? `<div class="live"><span class="dot"></span><div><div class="lt">วันนี้ · เวลาไต้หวัน ${live.hm}</div>${live.cur >= 0 ? `<div><b>ตอนนี้</b> ${esc(steps[live.cur].title)}</div>` : '<div>ยังไม่ถึงกิจกรรมแรกของวัน</div>'}${live.next >= 0 ? `<div class="small"><b>ถัดไป ${esc(steps[live.next].t)}</b> ${esc(steps[live.next].title)}</div>` : ''}</div></div>` : '';
   const main = `
-    ${blk('ตารางเวลา', liveBar + tile(steps.map((s, k) => `<div class="sr k-${s.k}${rowCls(k)}"><div class="st">${esc(s.t)}</div><div><div class="stt">${esc(s.title)}</div>${s.d ? `<div class="sd">${esc(s.d)}</div>` : ''}
+    ${blk(`ตารางเวลา <span class="cfc">ยืนยันแล้ว ${steps.filter(s => s.ok).length}/${steps.length}</span>`, liveBar + tile(steps.map((s, k) => `<div class="sr k-${s.k}${rowCls(k)}"><div class="st">${esc(s.t)}</div><div><div class="stt">${esc(s.title)} <span class="cf ${s.ok ? 'ok' : ''}">${s.ok ? '✅ ยืนยันแล้ว' : 'รอยืนยัน'}</span></div>${s.d ? `<div class="sd">${esc(s.d)}</div>` : ''}
       ${(s.dur || s.cost || s.l || (s.k === 'eat' && dayFoods.length)) ? `<div class="meta">${[s.dur ? esc(s.dur) : '', s.cost ? esc(s.cost) : '', s.k === 'eat' && dayFoods.length ? `<button class="lnk" data-foods="${d.day}">ดูร้านแนะนำ</button>` : '', s.l ? `<a href="${gmSearch(s.l.q)}" target="_blank" rel="noopener">แผนที่ ${s.n}</a>` : '', s.l && s.from ? `<a href="${gmDir(s.from.q, s.l.q)}" target="_blank" rel="noopener">เส้นทางจากจุดก่อนหน้า</a>` : ''].filter(Boolean).join('<i>·</i>')}</div>` : ''}
       ${s.tip ? `<div class="tip">${esc(s.tip)}</div>` : ''}</div></div>`).join('') + `<p class="note">${esc(d.note)} · เวลาทั้งหมดเป็นค่าประมาณ</p>`))}
     ${blk('ที่พักแนะนำ', tile(hotelBlock(HOTEL_FOR_DAY[d.day], d.day)))}

@@ -17,7 +17,7 @@ const img = p => (p.img ? import.meta.env.BASE_URL + p.img : null);
 const P = D.places, DAYS = D.days, LEGS = D.legs;
 const byCode = Object.fromEntries(P.map(p => [p.code, p]));
 const AIRPORT = { lat: 25.0777, lng: 121.2328 };
-const ORDER = { D1: [], D2: ['E2', 'E1', 'F1'], D3: ['F2', 'B1'], D4: ['C2', 'D1', 'C1'], D5: ['A2', 'A1'] };
+const ORDER = { D1: [], D2: ['E2', 'E1'], D3: ['B1'], D4: ['C2', 'D1', 'C1'], D5: ['A2', 'A1'] };
 const GROUP_SHORT = { A: 'ไทเป', B: 'อูไหล', C: 'จีหลง', D: 'จิ่วเฟิ่น', E: 'อาลีซาน', F: 'SML', G: 'ทางผ่าน' };
 const gk = p => p.code.replace(/\d+/g, '');
 // หมวดหมู่สถานที่ (จัดกลุ่มจากแท็กเดิมของแต่ละที่)
@@ -126,15 +126,14 @@ document.addEventListener('click', e => {
 
 /* ---------- plan ---------- */
 const NOTES = [
-  'เวลาบัส / HSR / รถไฟป่า และราคาทั้งหมดเป็นค่าประมาณจากแหล่งข้อมูลที่ไม่ตรงกัน เช็คกับเว็บทางการก่อนจอง',
-  'ตั๋วรถไฟป่าพระอาทิตย์ขึ้นจู้ซาน (เช้า 17) จองออนไลน์ได้ราว 12–15 วันก่อน (~ต้น ธ.ค.) รอบเวลาประกาศวันก่อน',
-  'บัสตรงอาลีซาน → SML (Yuanlin 6739) มีวันละ ~2 เที่ยว ที่นั่งน้อย · สำรอง: เจียอี้ → HSR ไถจง → บัส 6670 จะถึง SML ค่ำ',
-  'ที่พักอาลีซาน (คืน 16) และ SML (คืน 17) จองก่อน แบบยกเลิกฟรี · Alishan Hotel ราคาสูงมาก (~US$385–750 ต่อคืน)',
-  'อูไหลอยู่เย็นวันศุกร์ ถ้าถึงไทเปช้ากว่า ~15:30 ให้เลื่อนไปเช้าวันอาทิตย์ (ออก ~08:00 และถึงสนามบินไม่เกิน ~17:00)',
+  'เวลาบัสอาลีซานและรถไฟป่ายืนยันกับเว็บทางการแล้ว · เวลาและราคา HSR ยังไม่ยืนยัน เช็คกับ THSR ก่อนซื้อ',
+  'ตั๋วรถไฟป่าพระอาทิตย์ขึ้นจู้ซาน (เช้า 17) จองออนไลน์ได้ 2 ธ.ค. 12:00 · รอบเวลาประกาศ 16:30 วันก่อน',
+  'ไม่ไปทะเลสาบสุริยันจันทราแล้ว · วันที่ 17 ลงจากอาลีซานด้วยบัส 7329 รอบ 13:30 แล้วต่อ HSR เข้าไทเป',
+  'ที่พักจองแล้วทั้งหมด: อาลีซาน (คืน 16) และ Welove meworld Inn ไทเป (คืน 17–19 ยกเลิกไม่ได้)',
   'ยังไม่มีพยากรณ์จริงของ 16–20 ธ.ค. อากาศในแต่ละวันเป็นค่าเฉลี่ยเดือน ธ.ค. · เช็คพยากรณ์ (CWA / Windy) อีกครั้ง ~11–13 ธ.ค. · เช็คล่าสุด: ยังไม่ได้เช็ค',
 ];
 const OVERVIEW = {
-  D1: 'เถาหยวน → เจียอี้ → อาลีซาน', D2: 'อาลีซาน (จู้ซาน) → SML', D3: 'SML → ไถจง → ไทเป → อูไหล',
+  D1: 'เถาหยวน → เจียอี้ → อาลีซาน', D2: 'อาลีซาน (จู้ซาน) → เจียอี้ → ไทเป', D3: 'ไทเป → อูไหล',
   D4: 'ไทเป → จีหลง → จิ่วเฟิ่น → เมี่ยวโข่ว → ไทเป', D5: 'ซีเหมินติง → สนามบิน',
 };
 function dayCosts(day) {
@@ -172,12 +171,12 @@ function drawDayRoute(target, stops, color) {
 // เส้นทางทั้งทริป: จุดหลักเรียงตามลำดับที่ไป (ไทเปที่พักแวะซ้ำ ใช้เลขเดิม)
 const KEY = [
   ['TPE', 'สนามบินเถาหยวน', 'D1 · D5'], ['HSR_TY', 'HSR เถาหยวน', 'D1'], ['HSR_CY', 'HSR เจียอี้', 'D1'], ['CHIAYI_STN', 'สถานีรถไฟเจียอี้', 'D1'], ['E1', 'อาลีซาน', 'D1–D2'],
-  ['HOTEL_SML', 'SML อีต้าเส้า', 'D2–D3'], ['HSR_TC', 'HSR ไถจง', 'D3'], ['HOTEL_TPE', 'ไทเป ซีเหมินติง', 'D3–D5'], ['B1', 'อูไหล', 'D3'],
+  ['HOTEL_TPE', 'ไทเป ซีเหมินติง', 'D2–D5'], ['B1', 'อูไหล', 'D3'],
   ['C2', 'จีหลง', 'D4'], ['D1', 'จิ่วเฟิ่น', 'D4'],
 ];
 const KEY_LEGS = [
-  ['TPE', 'HSR_TY', 'D1'], ['HSR_TY', 'HSR_CY', 'D1'], ['HSR_CY', 'CHIAYI_STN', 'D1'], ['CHIAYI_STN', 'E1', 'D1'], ['E1', 'HOTEL_SML', 'D2'],
-  ['HOTEL_SML', 'HSR_TC', 'D3'], ['HSR_TC', 'HOTEL_TPE', 'D3'], ['HOTEL_TPE', 'B1', 'D3'], ['B1', 'HOTEL_TPE', 'D3', .006],
+  ['TPE', 'HSR_TY', 'D1'], ['HSR_TY', 'HSR_CY', 'D1'], ['HSR_CY', 'CHIAYI_STN', 'D1'], ['CHIAYI_STN', 'E1', 'D1'], ['E1', 'HSR_CY', 'D2', .006],
+  ['HSR_CY', 'HOTEL_TPE', 'D2', .006], ['HOTEL_TPE', 'B1', 'D3'], ['B1', 'HOTEL_TPE', 'D3', .006],
   ['HOTEL_TPE', 'C2', 'D4'], ['C2', 'D1', 'D4'], ['D1', 'C2', 'D4', .006], ['C2', 'HOTEL_TPE', 'D4', .006], ['HOTEL_TPE', 'TPE', 'D5'],
 ];
 function drawOverviewRoute(target) {
@@ -217,11 +216,10 @@ function renderOverview() {
         <div class="wrow"><span>20 ธ.ค. VZ569</span><b>TPE 19:50 → BKK 22:50</b></div>
         <div class="wd">ทั้งสองเที่ยวใช้ Terminal 1 · ไม่มีสัมภาระโหลดฟรี</div></div>
       <div class="w c2 r2 flush"><div id="ovmap" class="mini"></div></div>
-      <div class="w c2"><div class="wl">ที่พัก 4 คืน</div>
+      <div class="w c2"><div class="wl">ที่พัก 4 คืน · จองครบแล้ว</div>
         <div class="wrow"><span>16 ธ.ค.</span><b>อาลีซาน ✅</b></div>
-        <div class="wrow"><span>17 ธ.ค.</span><b>SML อีต้าเส้า</b></div>
-        <div class="wrow"><span>18–19 ธ.ค.</span><b>ไทเป ซีเหมินติง</b></div>
-        <div class="wd">อาลีซานจองแล้ว (Gau Shan Ching Hotel) · คืนอื่นยังไม่ได้จอง</div><button class="more" data-hotels="plan" style="font-size:15px;margin-top:8px">ดูตัวเลือกที่พัก</button></div>
+        <div class="wrow"><span>17–19 ธ.ค.</span><b>ไทเป ซีเหมินติง ✅</b></div>
+        <div class="wd">อาลีซาน: Gau Shan Ching Hotel · ไทเป: Welove meworld Inn</div><button class="more" data-hotels="plan" style="font-size:15px;margin-top:8px">ดูตัวเลือกที่พัก</button></div>
       <div class="w"><div class="wl">เตรียมตัว</div>
         <div class="hrow" style="margin-top:8px"><svg class="ring" viewBox="0 0 64 64"><circle cx="32" cy="32" r="${R}" fill="none" stroke="var(--line)" stroke-width="7"/><circle cx="32" cy="32" r="${R}" fill="none" stroke="var(--btn)" stroke-width="7" stroke-linecap="round" stroke-dasharray="${CIRC}" stroke-dashoffset="${CIRC * (1 - nd / all.length)}" transform="rotate(-90 32 32)"/></svg><div class="wn" style="margin:0;font-size:30px">${nd}/${all.length}</div></div>
         <div class="wd">ข้อที่ทำแล้ว</div></div>
@@ -444,7 +442,7 @@ function renderPlaces() {
 /* ---------- transport ---------- */
 const stTag = s => `<span class="stt2 st-${STATUS[s][1]}">${STATUS[s][0]}</span>`;
 const srcLinks = arr => (arr || []).map(([n, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(n)}</a>`).join(' · ');
-const TR_ROUTES = [['TPE', 'HSR_TY'], ['HSR_TY', 'HSR_CY'], ['HSR_CY', 'CHIAYI_STN', 'ALI_STN'], ['ALI_STN'], ['HSR_CY', 'XIDING', 'FENQIHU', 'ALI_STN'], ['ALI_STN', 'E2'], ['ALI_STN', 'SHUISHE'], ['SHUISHE', 'F1'], ['SHUISHE', 'HSR_TC'], ['HSR_TC', 'TPE_MAIN'], ['TPE_MAIN', 'XINDIAN', 'B1'], ['TPE_MAIN', 'C2', 'D1', 'C1', 'TPE_MAIN'], ['TPE_MAIN', 'TPE']];
+const TR_ROUTES = [['TPE', 'HSR_TY'], ['HSR_TY', 'HSR_CY'], ['HSR_CY', 'CHIAYI_STN', 'ALI_STN'], ['ALI_STN'], ['HSR_CY', 'XIDING', 'FENQIHU', 'ALI_STN'], ['ALI_STN', 'E2'], ['ALI_STN', 'HSR_CY', 'TPE_MAIN', 'HOTEL_TPE'], ['HOTEL_TPE', 'XINDIAN', 'B1'], ['TPE_MAIN', 'C2', 'D1', 'C1', 'TPE_MAIN'], ['TPE_MAIN', 'TPE']];
 if (TR_ROUTES.length !== TRANSPORT.length) console.warn('TR_ROUTES length mismatch');
 TMITEMS.transport = sel => {
   const items = [], lines = [];

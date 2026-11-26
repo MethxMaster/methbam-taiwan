@@ -6,7 +6,7 @@ import { HOTELS } from './days.js';
 
 export const HZONES = ['อาลีซาน', 'อาลีซาน (นอกอุทยาน)', 'SML', 'ไทเป', 'เจียอี้'];
 export const HTYPES = [
-  ['fav', 'ที่เราสนใจ ★'], ['near', 'ใกล้ที่เราสนใจ'], ['budget', 'ประหยัด & ฮอสเทล'], ['mid', 'ระดับกลาง'], ['high', 'ระดับสูง'], ['bnb', 'B&B / เกสต์เฮาส์'],
+  ['fav', 'ที่เราสนใจ ★'], ['near', 'ใกล้ที่เราสนใจ'], ['main', 'ใกล้สถานีไทเป'], ['ximen', 'อินน์เล็กซีเหมินติง'], ['budget', 'ประหยัด & ฮอสเทล'], ['mid', 'ระดับกลาง'], ['high', 'ระดับสูง'], ['bnb', 'B&B / เกสต์เฮาส์'],
   ['transit', 'ใกล้สถานี / MRT'], ['pier', 'ใกล้ท่าเรือ'], ['view', 'วิวทะเลสาบ'],
 ];
 
@@ -31,6 +31,7 @@ const U = {
 
 // คุณสมบัติเพิ่มของตัวเลือกที่อยู่ใน days.js (ชื่อต้องตรงกัน)
 const META = {
+  'Welove meworld Inn (唯樂米窩-西門館)': { tags: ['mid'], usd: 128, rating: 7.7 },
   'Gau Shan Ching Hotel (阿里山高山青大飯店)': { tags: ['mid', 'transit'], usd: 69, rating: null },
   'Alishan Gou Hotel': { tags: ['budget', 'transit'], usd: null, rating: null },
   'Alishan Hotel (Alishan House)': { tags: ['high', 'transit'], usd: 385, rating: 8.8 },
@@ -46,7 +47,7 @@ const META = {
   'Tomorrow Hotel': { tags: ['budget', 'transit'], usd: null, rating: null },
 };
 const ZONE = { ali: 'อาลีซาน', sml: 'SML', tpe: 'ไทเป' };
-const NIGHT = { ali: ['D1', 'คืน 16 ธ.ค.'], sml: ['D2', 'คืน 17 ธ.ค.'], tpe: ['D3', 'คืน 18–19 ธ.ค.'] };
+const NIGHT = { ali: ['D1', 'คืน 16 ธ.ค.'], tpe: ['D2', 'คืน 17–19 ธ.ค.'] };
 
 const SRC = { ali: [U.aliStation, U.aliList], sml: [U.smlAgoda, U.smlList], tpe: [U.ximenTrip, U.ximen] };
 const planned = Object.entries(HOTELS).flatMap(([k, h]) => h.picks.map((p, i) => ({
@@ -132,5 +133,25 @@ const near = [
   X({ id: 'n10', n: 'Fullerton Hotel – Maison North', loc: 'DUNHUA', z: 'ไทเป', tags: ['near', 'mid'], usd: 100, rating: null, d: '4 ดาว ห่าง Taipei Arena ~0.7 ไมล์', price: 'ตัวอย่าง ~US$100 ต่อคืน', q: 'Taipei Fullerton Hotel Maison North', src: KY('Expedia', 'https://www.expedia.com/cn/Taipei-Arena-Hotels.0-l6080191-0.Travel-Guide-Filter-Hotels') }),
 ];
 
-export const HOTEL_LIST = [...favs, ...planned, ...near, ...extras];
+// ---- ใกล้สถานีไทเป (Taipei Main Station): จากการค้นเว็บ 24 พ.ย. 2569 งบราว 3,000 บาท/คืน 17–20 ธ.ค. ----
+const mainStn = [
+  X({ id: 'm1', n: 'Just Live Inn – Taipei Station', loc: 'TPE_MAIN', z: 'ไทเป', tags: ['main', 'budget', 'transit'], usd: null, rating: 9.3, d: 'เดิน ~5 นาทีถึง MRT สถานีไทเป · คะแนน 9.3/10 จาก ~1,220 รีวิว (Booking.com) · ราคาเป็นตัวอย่างคนละวัน ไม่ใช่ราคา 17–20 ธ.ค.', price: 'ไม่พบราคา', q: 'Just Live Inn Taipei Station', src: [['Booking.com: ย่านสถานีไทเป', 'https://www.booking.com/district/tw/t-ai-pei/taipeimainstration.html']] }),
+  X({ id: 'm2', n: 'Hinoen Hotel', loc: 'TPE_MAIN', z: 'ไทเป', tags: ['main', 'mid'], usd: 74, rating: 9.2, d: 'ห่างสถานีไทเป ~0.3 ไมล์ (~500 ม.) · คะแนน 9.2/10 จาก ~608 รีวิว · ราคาเป็นตัวอย่างคนละวัน ไม่ใช่ราคา 17–20 ธ.ค.', price: 'ตัวอย่าง ~US$74 ต่อคืน (ช่วงต้น ม.ค. 2026)', q: 'Hinoen Hotel Taipei', src: [['Expedia: โรงแรมใกล้สถานีไทเป', 'https://www.expedia.com/cn/Taipei-Main-Station-Hotels.0-l825684918979485696-0.Travel-Guide-Filter-Hotels']] }),
+  X({ id: 'm3', n: 'CityInn Hotel Taipei Station Branch III (新驛旅店台北車站三館)', loc: 'TPE_MAIN', z: 'ไทเป', tags: ['main', 'mid', 'transit'], usd: null, rating: 9.2, d: '3.5 ดาว เดิน ~6 นาทีถึง MRT สถานีไทเป · คะแนน 9.2 · ราคาเป็นตัวอย่างคนละวัน ไม่ใช่ราคา 17–20 ธ.ค.', price: 'ไม่พบราคา', q: 'CityInn Hotel Taipei Station Branch III', src: [['Funtime: ที่พักใกล้สถานีไทเป', 'https://www.funtime.com.tw/blog/funtime/taipei-main-station-accommodations']] }),
+  X({ id: 'm4', n: 'CityInn Hotel Taipei Station Branch I (新驛旅店台北車站一館)', loc: 'TPE_MAIN', z: 'ไทเป', tags: ['main', 'budget'], usd: 55, rating: null, d: '3 ดาว เดิน ~10 นาทีถึงสถานีไทเปและสถานีบัส · ราคาเป็นตัวอย่างคนละวัน ไม่ใช่ราคา 17–20 ธ.ค.', price: 'ตัวอย่างต่ำสุด ~NT$1,798 ต่อคืน (Kayak เฉพาะบางวัน)', q: 'CityInn Hotel Taipei Station Branch I', src: [['Funtime: ที่พักใกล้สถานีไทเป', 'https://www.funtime.com.tw/blog/funtime/taipei-main-station-accommodations']] }),
+  X({ id: 'm5', n: '璞漣商務旅館 台北車站館', loc: 'TPE_MAIN', z: 'ไทเป', tags: ['main', 'budget'], usd: 45, rating: null, d: '3 ดาว ใกล้สถานีบัสไทเป (臺北轉運站) · ราคาเป็นตัวอย่างคนละวัน ไม่ใช่ราคา 17–20 ธ.ค.', price: 'ตัวอย่างต่ำสุด ~NT$1,447 ต่อคืน (Kayak เฉพาะบางวัน)', q: '璞漣商務旅館 台北車站館', src: [['Funtime: ที่พักใกล้สถานีไทเป', 'https://www.funtime.com.tw/blog/funtime/taipei-main-station-accommodations']] }),
+  X({ id: 'm6', n: 'Twin Star Inn (雙星寓所)', loc: 'TPE_MAIN', z: 'ไทเป', tags: ['main', 'budget'], usd: null, rating: null, d: 'ถนนจงเซี่ยวตะวันตก ตอน 1 ข้างสถานีไทเป · เช็คอินด้วยตัวเอง (จากบล็อก) · ราคาเป็นตัวอย่างคนละวัน ไม่ใช่ราคา 17–20 ธ.ค.', price: 'ไม่พบราคา', q: '雙星寓所 Twin Star Inn Taipei', src: [['Funtime: ที่พักใกล้สถานีไทเป', 'https://www.funtime.com.tw/blog/funtime/taipei-main-station-accommodations']] }),
+  X({ id: 'm7', n: 'Roaders Plus Hotel – Station Front (路徒PLUS行旅 站前館)', loc: 'TPE_MAIN', z: 'ไทเป', tags: ['main', 'mid', 'transit'], usd: null, rating: null, d: 'No. 80 ถนนจงเซี่ยวตะวันตก ตอน 1 หน้าสถานีไทเป · ระดับกลาง อาจเกินงบ · ราคาเป็นตัวอย่างคนละวัน ไม่ใช่ราคา 17–20 ธ.ค.', price: 'ไม่พบราคา', q: 'Roaders Plus Hotel Taipei Station', src: [['Funtime: ที่พักใกล้สถานีไทเป', 'https://www.funtime.com.tw/blog/funtime/taipei-main-station-accommodations']] }),
+  X({ id: 'm8', n: 'The Tango Hotel Taipei Nanshi', loc: 'TPE_MAIN', z: 'ไทเป', tags: ['main', 'mid'], usd: null, rating: null, d: 'เดิน ~10 นาทีถึงสถานีไทเป · ~1,297 รีวิว · ราคาเป็นตัวอย่างคนละวัน ไม่ใช่ราคา 17–20 ธ.ค.', price: 'ไม่พบราคา', q: 'The Tango Hotel Taipei Nanshi', src: [['Booking.com: ย่านสถานีไทเป', 'https://www.booking.com/district/tw/t-ai-pei/taipeimainstration.html']] }),
+];
+
+// ---- อินน์เล็กในซีเหมินติงแบบ Welove meworld: จากการค้นเว็บ 24 พ.ย. 2569 ----
+const ximenInn = [
+  X({ id: 'x2', n: 'Cattail Pocket Inn (貓尾口袋旅店 西門館)', loc: 'HOTEL_TPE', z: 'ไทเป', tags: ['ximen', 'mid'], usd: null, rating: 9.0, d: 'เปิดปี 2024 มีแค่ 10 ห้อง ห้องแนวดีไซน์ · Kangding Rd Lane 25 No. 1 ฝั่งซีเหมินติง · Agoda ให้คะแนนบริการ ความสะอาด และทำเลเกิน 9 · ห้องน้อย ควรจองเร็ว · ยังไม่ได้เช็คราคาวันที่ 17–20 ธ.ค.', price: 'ไม่พบราคา', q: '貓尾口袋旅店 西門館', src: [['Agoda', 'https://www.agoda.com/zh-tw/cattail-pocket-inn/hotel/taipei-tw.html']] }),
+  X({ id: 'x3', n: 'Ling Lan Hotel (苓旅 萬年館)', loc: 'HOTEL_TPE', z: 'ไทเป', tags: ['ximen', 'budget'], usd: null, rating: null, d: 'อยู่ในตึกว่านเหนียนกลางซีเหมินติง คะแนนรีวิวราว 4.5/5 · รีวิวบอกตึกเก่ารีโนเวทใหม่แล้วสะอาด เป็นตัวเลือกราคาประหยัด · ยังไม่ได้เช็คราคาวันที่ 17–20 ธ.ค.', price: 'ไม่พบราคา', q: '苓旅 萬年館 西門町', src: [['HK01: โรงแรมซีเหมินติง', 'https://www.hk01.com/旅遊/897474/西門町酒店12間推介-近台北捷運站人均-116-親子房-落地窗靚景']] }),
+  X({ id: 'x4', n: 'inhouse Boutique', loc: 'HOTEL_TPE', z: 'ไทเป', tags: ['ximen', 'mid'], usd: null, rating: 9.0, d: '4 ดาว คะแนน 9.0/10 จาก ~633 รีวิว (Expedia) อยู่อันดับต้นของโรงแรมบูทีคซีเหมินติง · ยังไม่ได้เช็คระยะถึง MRT ซีเหมิน · ยังไม่ได้เช็คราคาวันที่ 17–20 ธ.ค.', price: 'ไม่พบราคา', q: 'inhouse Boutique Taipei', src: [['Expedia: บูทีคซีเหมินติง', 'https://www.expedia.com/cn/Ximending-Taipei-Hotels-Boutique-Hotel.0-n6155805-0-tBoutiqueHotel.Travel-Guide-Filter-Hotels']] }),
+  X({ id: 'x5', n: 'citizenM Taipei North Gate', loc: 'HOTEL_TPE', z: 'ไทเป', tags: ['ximen', 'mid', 'transit'], usd: null, rating: null, d: 'โรงแรมดีไซน์ห้องเล็กแนวคนรุ่นใหม่ ใกล้ MRT เป่ยเหมิน (ระหว่างซีเหมินติงกับสถานีไทเป) · ราคาอาจเกินงบ · ยังไม่ได้เช็คราคาวันที่ 17–20 ธ.ค.', price: 'ไม่พบราคา', q: 'citizenM Taipei North Gate', src: [['HK01: โรงแรมซีเหมินติง', 'https://www.hk01.com/旅遊/897474/西門町酒店12間推介-近台北捷運站人均-116-親子房-落地窗靚景']] }),
+];
+
+export const HOTEL_LIST = [...favs, ...planned, ...mainStn, ...ximenInn, ...near, ...extras];
 export const FAV_HOTELS = favs;

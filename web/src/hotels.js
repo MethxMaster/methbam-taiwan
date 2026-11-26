@@ -32,7 +32,7 @@ const U = {
 // คุณสมบัติเพิ่มของตัวเลือกที่อยู่ใน days.js (ชื่อต้องตรงกัน)
 const META = {
   'Welove meworld Inn (唯樂米窩-西門館)': { tags: ['mid'], usd: 128, rating: 7.7 },
-  'Gau Shan Ching Hotel (阿里山高山青大飯店)': { tags: ['mid', 'transit'], usd: 69, rating: null },
+  'Gau Shan Ching Hotel (高山青大飯店)': { tags: ['mid', 'transit'], usd: 80, rating: null },
   'Alishan Gou Hotel': { tags: ['budget', 'transit'], usd: null, rating: null },
   'Alishan Hotel (Alishan House)': { tags: ['high', 'transit'], usd: 385, rating: 8.8 },
   'FRIDAY Inn Guest House': { tags: ['mid', 'pier', 'bnb'], usd: 68, rating: 9.4 },
@@ -62,7 +62,6 @@ const X = (o) => ({ s: o.usd || o.price.includes('US$') || o.price.includes('€
 const extras = [
   // ---- อาลีซาน ----
   X({ id: 'e1', n: 'Applause In The Mountain', z: 'อาลีซาน', tags: ['mid'], rating: 8.8, usd: null, d: '3 ดาว ในอาลีซาน คะแนนรีวิว 8.8/10 (Excellent) ตามเว็บจอง ยังไม่ทราบระยะถึงสถานีรถไฟป่า', price: 'ไม่พบราคา', q: 'Applause In The Mountain Alishan', src: [U.aliStation] }),
-  X({ id: 'e2', n: 'Gau Shan Ching Hotel', z: 'อาลีซาน', tags: ['transit'], usd: null, rating: null, d: 'อยู่ในรายการโรงแรมใกล้สถานีอาลีซาน มีอาหารเช้าฟรี (ตามเว็บจอง)', price: 'ไม่พบราคา', q: 'Gau Shan Ching Hotel Alishan', src: [U.aliStation] }),
   X({ id: 'e3', n: 'Yingshan Hotel', z: 'อาลีซาน', tags: ['budget'], usd: null, rating: null, d: '2 ดาว อยู่ในรายการที่พักอาลีซาน', price: 'ไม่พบราคา', q: 'Yingshan Hotel Alishan', src: [U.aliList] }),
   X({ id: 'e4', n: 'TONG PU HOTEL', z: 'อาลีซาน', tags: [], usd: null, rating: null, d: 'ถูกกล่าวถึงในรายการตัวเลือกใกล้เคียง ยังไม่พบรายละเอียด', price: 'ไม่พบราคา', q: 'TONG PU HOTEL Alishan', src: [U.aliList] }),
   X({ id: 'e5', n: 'Hotel Indigo Alishan (IHG)', z: 'อาลีซาน (นอกอุทยาน)', tags: ['high'], usd: 392, rating: null, d: 'อยู่ที่ฟานลู่ ไม่ใช่ในอุทยาน ไม่เหมาะกับรถไฟพระอาทิตย์ขึ้นเช้ามืด', price: 'ตัวอย่าง ~US$392 ต่อคืน', q: 'Hotel Indigo Alishan', src: [U.aliList] }),

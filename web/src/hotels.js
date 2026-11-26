@@ -31,6 +31,7 @@ const U = {
 
 // คุณสมบัติเพิ่มของตัวเลือกที่อยู่ใน days.js (ชื่อต้องตรงกัน)
 const META = {
+  'Welove meworld Inn (唯樂米窩-西門館)': { tags: ['mid'], usd: 128, rating: 7.7 },
   'Gau Shan Ching Hotel (阿里山高山青大飯店)': { tags: ['mid', 'transit'], usd: 69, rating: null },
   'Alishan Gou Hotel': { tags: ['budget', 'transit'], usd: null, rating: null },
   'Alishan Hotel (Alishan House)': { tags: ['high', 'transit'], usd: 385, rating: 8.8 },
@@ -46,7 +47,7 @@ const META = {
   'Tomorrow Hotel': { tags: ['budget', 'transit'], usd: null, rating: null },
 };
 const ZONE = { ali: 'อาลีซาน', sml: 'SML', tpe: 'ไทเป' };
-const NIGHT = { ali: ['D1', 'คืน 16 ธ.ค.'], sml: ['D2', 'คืน 17 ธ.ค.'], tpe: ['D3', 'คืน 18–19 ธ.ค.'] };
+const NIGHT = { ali: ['D1', 'คืน 16 ธ.ค.'], tpe: ['D2', 'คืน 17–19 ธ.ค.'] };
 
 const SRC = { ali: [U.aliStation, U.aliList], sml: [U.smlAgoda, U.smlList], tpe: [U.ximenTrip, U.ximen] };
 const planned = Object.entries(HOTELS).flatMap(([k, h]) => h.picks.map((p, i) => ({
@@ -146,7 +147,6 @@ const mainStn = [
 
 // ---- อินน์เล็กในซีเหมินติงแบบ Welove meworld: จากการค้นเว็บ 24 พ.ย. 2569 ----
 const ximenInn = [
-  X({ id: 'x1', n: 'Welove meworld Inn (唯樂米窩-西門館)', loc: 'HOTEL_TPE', z: 'ไทเป', tags: ['ximen', 'budget'], usd: null, rating: 7.7, d: 'ถนนเฉิงตู ซีเหมินติง เดิน ~6 นาทีถึง MRT ซีเหมิน ข้างล่างมี 7-Eleven และ Starbucks · สร้างปี 2021 มี 47 ห้อง ไม่มีอาหารเช้า เช็คอิน 16:00 · Trip.com 7.7–7.8 (ทำเล 8.6–8.8 ความสะอาด 7.2–7.3 ต่ำสุด) Agoda 7.5 จาก ~3,848 รีวิว · รีวิวบอกบางห้องมืด ยังไม่เจอรีวิวใน Pantip/PTT/Dcard · ยังไม่ได้เช็คราคาวันที่ 17–20 ธ.ค.', price: 'ไม่พบราคา', q: '唯樂米窩 西門館', src: [['Trip.com', 'https://www.trip.com/hotels/taipei-hotel-detail-88648907/we-love-me-world/'], ['รวมรีวิว Agoda (Funtime)', 'https://www.funtime.com.tw/domhotel/%E5%94%AF%E6%A8%82%E7%B1%B3%E7%AA%A9']] }),
   X({ id: 'x2', n: 'Cattail Pocket Inn (貓尾口袋旅店 西門館)', loc: 'HOTEL_TPE', z: 'ไทเป', tags: ['ximen', 'mid'], usd: null, rating: 9.0, d: 'เปิดปี 2024 มีแค่ 10 ห้อง ห้องแนวดีไซน์ · Kangding Rd Lane 25 No. 1 ฝั่งซีเหมินติง · Agoda ให้คะแนนบริการ ความสะอาด และทำเลเกิน 9 · ห้องน้อย ควรจองเร็ว · ยังไม่ได้เช็คราคาวันที่ 17–20 ธ.ค.', price: 'ไม่พบราคา', q: '貓尾口袋旅店 西門館', src: [['Agoda', 'https://www.agoda.com/zh-tw/cattail-pocket-inn/hotel/taipei-tw.html']] }),
   X({ id: 'x3', n: 'Ling Lan Hotel (苓旅 萬年館)', loc: 'HOTEL_TPE', z: 'ไทเป', tags: ['ximen', 'budget'], usd: null, rating: null, d: 'อยู่ในตึกว่านเหนียนกลางซีเหมินติง คะแนนรีวิวราว 4.5/5 · รีวิวบอกตึกเก่ารีโนเวทใหม่แล้วสะอาด เป็นตัวเลือกราคาประหยัด · ยังไม่ได้เช็คราคาวันที่ 17–20 ธ.ค.', price: 'ไม่พบราคา', q: '苓旅 萬年館 西門町', src: [['HK01: โรงแรมซีเหมินติง', 'https://www.hk01.com/旅遊/897474/西門町酒店12間推介-近台北捷運站人均-116-親子房-落地窗靚景']] }),
   X({ id: 'x4', n: 'inhouse Boutique', loc: 'HOTEL_TPE', z: 'ไทเป', tags: ['ximen', 'mid'], usd: null, rating: 9.0, d: '4 ดาว คะแนน 9.0/10 จาก ~633 รีวิว (Expedia) อยู่อันดับต้นของโรงแรมบูทีคซีเหมินติง · ยังไม่ได้เช็คระยะถึง MRT ซีเหมิน · ยังไม่ได้เช็คราคาวันที่ 17–20 ธ.ค.', price: 'ไม่พบราคา', q: 'inhouse Boutique Taipei', src: [['Expedia: บูทีคซีเหมินติง', 'https://www.expedia.com/cn/Ximending-Taipei-Hotels-Boutique-Hotel.0-n6155805-0-tBoutiqueHotel.Travel-Guide-Filter-Hotels']] }),
